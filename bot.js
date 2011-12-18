@@ -1,19 +1,20 @@
 var Bot    = require('ttapi');
-var AUTH   = '#####';
+var AUTH   = 'auth+live+#####';
 var USERID = '#####';
 //Room code for Indie/Classic Alt 1 + Done
 var ROOMID = '4e9d6e14a3f75112a202cb1d';
 //Room code for indie and such.
 var IASROOMID = '4e08878c14169c0199001082';
-var ADMINID = '#####';
-var ALTADMINID = '#####';
+var MAINADMIN = '#####';
 
+var admins = new Array();
+admins[0] = '#####';
+admins[1] = '#####';
 var bot = new Bot(AUTH, USERID);
 var usersList = { };
 var djs = { };
 
-
-
+//Find something to replace busy waiting
 function wait(msecs)
 {
 	var start = new Date().getTime();
@@ -22,7 +23,16 @@ function wait(msecs)
 	{
 		cur = new Date().getTime();
 	}	
-} 
+}
+
+function admincheck(userid) {
+	for (i in admins) {
+		if (userid == admins[i]) {
+			return true;
+		}
+	}
+	return false;
+}
 
 bot.on('ready', function (data) {
 	bot.roomRegister(ROOMID);
@@ -30,9 +40,9 @@ bot.on('ready', function (data) {
 
 bot.on('roomChanged', function(data) {
 	usersList = { };
-	//console.log('Joined', data);
-
 	djs = data.room.metadata.djs;
+
+	//Debugging
 	//for (i in djs) {
 	//	console.log(djs[i]);
 	//}
@@ -117,6 +127,7 @@ bot.on('speak', function (data) {
 
 		//Boots user 'thisiskirby'
 		case 'antiquing':
+			bot.speak('boom!');
 			bot.boot('4e1c82d24fe7d0313f0be9a7');
 			break;
 
@@ -151,15 +162,19 @@ bot.on('speak', function (data) {
 		//Picks from one of 6 responses.
 		case 'reptar':
 			var rand = Math.random();
-			if (rand < 0.1) {
+			if (rand < 0.05) {
 				bot.speak('That band is pretty awesome.');
-			} else if (rand < 0.2) {
+			} else if (rand < 0.10) {
+				bot.speak('Good morning!');
+			} else if (rand < 0.18) {
+				bot.speak('Rawr!');
+			} else if (rand < 0.3) {
 				bot.speak('rawr!');
 			} else if (rand < 0.4) {
 				bot.speak('RAWR!');
-			} else if (rand < 0.6) {
+			} else if (rand < 0.5) {
 				bot.speak('rawr.');
-			} else if (rand < 0.8) {
+			} else if (rand < 0.6) {
 				bot.speak('RAWR!!!');
 			} else {
 				bot.speak('.reptar');
@@ -178,7 +193,7 @@ bot.on('speak', function (data) {
 		//Tells bot to awesome the current song
 		case '\.a':
 		case 'awesome':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
+			if (admincheck(data.userid)) {
 				bot.vote('up');
 			}
 			break;
@@ -186,21 +201,14 @@ bot.on('speak', function (data) {
 		//Tells bot to lame the current song
 		case '\.l':
 		case 'lame':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
+			if (admincheck(data.userid)) {
 				bot.vote('down');
-			}
-			break;
-
-		//Removes the leftmost DJ
-		case 'pulldj':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
-				bot.remDj(djs[0]);
 			}
 			break;
 
 		//Outputs first chorus of Reptar - Houseboat Babies
 		case 'CAN YOU FEEL IT?':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
+			if (admincheck(data.userid)) {
 				bot.speak('YES I CAN FEEL IT');
 				wait(2800);
 				bot.speak('When I\'m at Jenny\'s house');
@@ -210,26 +218,31 @@ bot.on('speak', function (data) {
 				bot.speak('Forget your parents!');
 				wait(2500);
 				bot.speak('But it\'s just cat and mouse!');
-   			}
+			}
 			break;
 
 		//Changes room
 		case 'Sparkle, go to IAS':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
+			if (admincheck(data.userid)) {
 				bot.roomDeregister();
 				bot.roomRegister(IASROOMID);
 			}
 			break;
 		case 'Sparkle, go to Reptar Room':
-			if ((data.userid == ADMINID) || (data.userid == ALTADMINID)) {
+			if (admincheck(data.userid)) {
 				bot.roomDeregister();
 				bot.roomRegister(ROOMID);
+			}
+			break;
+		case 'pulldj':
+			if (admincheck(data.userid)) {
+				bot.remDj(djs[0]);
 			}
 			break;
 
 		//Pull everyone and play a song
 		case 'cb4':
-			if (data.userid == ADMINID) {
+			if (admincheck(data.userid)) {
 				bot.speak('Awwwwww yeah');
 				wait(2000);
 				for (i in djs) {
@@ -238,7 +251,27 @@ bot.on('speak', function (data) {
 				bot.addDj();
 			}
 			break;
-	}
+
+		//Step up to DJ
+		case 'Sparkle, step up':
+			if (admincheck(data.userid)) {
+				if (data.userid == MAINADMIN) {
+					bot.speak('Yes, mistress!');
+				}
+				bot.addDj();
+			}
+			break;
+
+		//Step down if DJing
+		case 'Sparkle, step down':
+			if (admincheck(data.userid)) {
+				if (data.userid == MAINADMIN) {
+					bot.speak('Yes, mistress.');
+				}
+				bot.remDj(USERID);
+			}
+			break;
+	}				
 
 });
 
@@ -250,14 +283,13 @@ bot.on('newsong', function (data) {
 
 	//remove bot if current dj
 	if (djs[0] == USERID) {
-		bot.remDj(djs[0]);
+		bot.remDj(USERID);
 	}
 	
 	//update dj list
 	djs = data.room.metadata.djs;
 
 	//debugging
-	//console.log(data.room.metadata);
 	console.log('Now Playing: '+artist+' - '+song);
 
 	wait(5000);
@@ -270,4 +302,5 @@ bot.on('rem_dj', function (data) {
 
 bot.on('add_dj', function(data) {
 	console.log('Stepped up: ' + data.user[0].name);
+	//djs[djs.length] = data.user[0].userid;
 });
