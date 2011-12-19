@@ -1,5 +1,5 @@
 /**
- *  bot.js
+ *  sparkle.js
  *  Author: sharedferret
  *  Version: [dev] 2011.12.19
  *  
@@ -9,42 +9,23 @@
  * 
  *  Run: 'node sparkle.js'
  *  
- *  Set parameters AUTH, USERID, MAINADMIN, ROOMID, admins() before running.
+ *  Make sure parameters in config.js are set before running.
  *
  *  Currently assumes DATABASE, SONG_TABLE, and CHAT_TABLE exist.
 */
 
 var Bot    = require('ttapi');
-
-//Bot information
-var AUTH   = 'auth+live+#####';
-var USERID = '#####';
-var MAINADMIN = '#####';
-
-//Room codes
-var ROOMID = '4e9d6e14a3f75112a202cb1d'; //Indie/Classic Alternative 1 + Down
-var IASROOMID = '4e08878c14169c0199001082'; //indie and such.
-
-//Sets up the bot admin array
-var admins = new Array();
-admins[0]  = '#####';
-admins[1]  = '#####';
+var config = require('./config.js');
 
 //Database
 //Caution: assumes database and tables already created
 //TODO: add catch for db/table not found to create them
 var mysql = require('mysql');
-var DATABASE   = 'nodejs_mysql_#####';
-var SONG_TABLE = 'SONGLIST';
-var CHAT_TABLE = 'CHATLOG';
-var client = mysql.createClient({
-	user: '#####',
-	password: '#####',
-});
-client.query('USE '+DATABASE);
+var client = mysql.createClient(config.DBLOGIN);
+client.query('USE '+ config.DATABASE);
 
 //Creates the bot and initializes global vars
-var bot = new Bot(AUTH, USERID);
+var bot = new Bot(config.AUTH, config.USERID);
 var usersList = { };
 
 var curdj;
@@ -64,8 +45,8 @@ var currentsong = {
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
 function admincheck(userid) {
-	for (i in admins) {
-		if (userid == admins[i]) {
+	for (i in config.admins) {
+		if (userid == config.admins[i]) {
 			return true;
 		}
 	}
@@ -99,7 +80,7 @@ function reptarCall() {
 //This runs on the endsong event.
 function addToDb(data) {
 	client.query(
-		'INSERT INTO '+SONG_TABLE+' '
+		'INSERT INTO '+ config.SONG_TABLE +' '
 		+ 'SET artist = ?,song = ?, djname = ?, djid = ?, up = ?, down = ?, listeners = ?, started = ?',
 		[currentsong.artist, 
 		currentsong.song, 
@@ -113,7 +94,7 @@ function addToDb(data) {
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
 bot.on('ready', function (data) {
-	bot.roomRegister(ROOMID);
+	bot.roomRegister(config.ROOMID);
 });
 
 //Runs when the room is changed.
@@ -174,22 +155,23 @@ bot.on('registered',   function (data) {
 
 	//Greet user
 	//Displays custom greetings for certain members
-	switch(user.name) {
-		case 'overlordnyaldee':
-			bot.speak('Meow!');
-			setTimeout(function() {
-				bot.speak('hugs overlordnyaldee');
-			}, 2000);
-			break;
-		case 'sharedferret':
-			bot.speak('Hi ferret!');
-			setTimeout(function() {
-				bot.speak('hugs sharedferret');
-			}, 2000);
-			break;
-		default:
-			bot.speak('Hi '+user.name+'!');
-			//bot.speak('Welcome, ' + user.name + '!');
+	if(config.welcomeUsers) {
+		switch(user.name) {
+			case 'overlordnyaldee':
+				bot.speak('Meow!');
+				setTimeout(function() {
+					bot.speak('hugs overlordnyaldee');
+				}, 2000);
+				break;
+			case 'sharedferret':
+				bot.speak('Hi ferret!');
+				setTimeout(function() {
+					bot.speak('hugs sharedferret');
+				}, 2000);
+				break;
+			default:
+				bot.speak(config.welcomeGreeting + user.name + '!');
+		}
 	}
 });
 
@@ -213,7 +195,7 @@ bot.on('speak', function (data) {
 	console.log('Chat ['+data.userid+' ' +name+'] '+text);
 
 	//Log in db (chatlog table)
-	client.query('INSERT INTO '+CHAT_TABLE+' '
+	client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
 		+ 'SET user = ?, userid = ?, chat = ?',
 		[data.name, data.userid, data.text]);
 
@@ -224,12 +206,17 @@ bot.on('speak', function (data) {
 		//--------------------------------------
 
 		case '.sparklecommands':
-			bot.speak('commands: .users, .owner, ping, reptar, mostplayed, mostawesomes, mostlames, mymostplayed, mymostawesomed, mymostlamed');
+			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
+				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
+				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize');
 			break;
 
 		case 'help':
 		case 'commands':
-			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, .twitter, .rules, .users, .owner');
+			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, '
+				+ '.twitter, .rules, .users, .owner, .source, mostplayed, '
+				+ 'mostawesomed, mostlamed, mymostplayed, mymostawesomed, '
+				+ 'mymostlamed, totalawesomes, dbsize');
 			break;
 
 		//--------------------------------------
@@ -250,7 +237,8 @@ bot.on('speak', function (data) {
 		case 'antiquing':
 		case 'antiquing?':
 			bot.speak('boom!');
-			bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
+			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
+			//bot.boot('4e3b6a804fe7d0578d003859'); //boot vic
 			break;
 
 		//Responds to reptar-related call
@@ -267,7 +255,13 @@ bot.on('speak', function (data) {
 
 		//Outputs bot owner
 		case '.owner':
-			bot.speak('sharedferret is my mistress.');
+			bot.speak(config.ownerResponse);
+			break;
+
+		//Outputs github url for SparkleBot
+		case '.source':
+			bot.speak('My source code is available at: '
+				+ 'http://https://github.com/sharedferret/Sparkle-Turntable-Bot');
 			break;
 
 		//Ping bot
@@ -319,7 +313,7 @@ bot.on('speak', function (data) {
 		//Returns the total number of awesomes logged in the songlist table
 		case 'totalawesomes':
 			client.query('SELECT SUM(UP) AS SUM FROM '
-				+ SONG_TABLE,
+				+ config.SONG_TABLE,
 				function selectCb(error, results, fields) {
 					var awesomes = results[0]['SUM'];
 					console.log(results[0]);
@@ -484,24 +478,21 @@ bot.on('speak', function (data) {
 
 		//Changes room
 		case 'Meow, go to IAS':
-			if (admincheck(data.userid)) {
+			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
-				bot.roomRegister(IASROOMID);
+				bot.roomRegister(config.IASROOMID);
 			}
 			break;
 		case 'Meow, go to Reptar Room':
-			if (admincheck(data.userid)) {
+			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
-				bot.roomRegister(ROOMID);
+				bot.roomRegister(config.ROOMID);
 			}
 			break;
 
 		//Step up to DJ
 		case 'Meow, step up':
 			if (admincheck(data.userid)) {
-				if (data.userid == MAINADMIN) {
-					bot.speak('Yes, mistress!');
-				}
 				bot.addDj();
 			}
 			break;
@@ -509,9 +500,6 @@ bot.on('speak', function (data) {
 		//Step down if DJing
 		case 'Meow, step down':
 			if (admincheck(data.userid)) {
-				if (data.userid == MAINADMIN) {
-					bot.speak('Yes, mistress.');
-				}
 				bot.remDj(USERID);
 			}
 			break;
@@ -540,8 +528,8 @@ bot.on('speak', function (data) {
 
 		//Shuts down bot (only the main admin can run this)
 		//Disconnects from room, exits process.
-		case 'Sparkle, shut down':
-			if (data.userid == MAINADMIN) {
+		case 'Meow, shut down':
+			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
 				process.exit(0);
 			}
@@ -567,8 +555,10 @@ bot.on('endsong', function (data) {
 
 	//Report song stats in chat
 	console.log('song end', data);
-	bot.speak(currentsong.song + ' stats: awesomes: '
-		+ currentsong.up + ' lames: ' + currentsong.down);
+	if (config.reportSongStats) {
+		bot.speak(currentsong.song + ' stats: awesomes: '
+			+ currentsong.up + ' lames: ' + currentsong.down);
+	}
 });
 
 //Runs when a new song is played
@@ -590,8 +580,8 @@ bot.on('newsong', function (data) {
 
 	//If bot just played a song, step down
 	if (usertostep != null) {
-		if (usertostep == USERID) {
-			bot.remDj(USERID);
+		if (usertostep == config.USERID) {
+			bot.remDj(config.USERID);
 		}
 	}
 
