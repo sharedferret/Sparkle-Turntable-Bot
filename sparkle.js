@@ -261,7 +261,7 @@ bot.on('speak', function (data) {
 		//Outputs github url for SparkleBot
 		case '.source':
 			bot.speak('My source code is available at: '
-				+ 'http://https://github.com/sharedferret/Sparkle-Turntable-Bot');
+				+ 'https://github.com/sharedferret/Sparkle-Turntable-Bot');
 			break;
 
 		//Ping bot
