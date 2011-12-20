@@ -29,7 +29,8 @@ exports.DBLOGIN    =  {
 }				//A mysql login for your bot
 
 //Flags
-exports.reportSongStats = false;
+exports.reportSongStats = true;
 exports.welcomeUsers    = true;
 exports.welcomeGreeting = 'Hi, ';
 exports.ownerResponse   = 'sharedferret is my mistress.';
+exports.oneDownEnforce  = true;
