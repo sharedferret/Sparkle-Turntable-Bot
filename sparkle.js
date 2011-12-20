@@ -143,18 +143,20 @@ bot.on('update_votes', function (data) {
 	//Log vote in console
 	//Note: Username only displayed for upvotes, since TT doesn't broadcast
 	//      username for downvote events.
-	if (data.room.metadata.votelog[0][1] == 'up') {
-		var voteduser = usersList[data.room.metadata.votelog[0][0]];
-		console.log('Vote: [+'
-			+ data.room.metadata.upvotes + ' -'
-			+ data.room.metadata.downvotes + '] ['
-			+ data.room.metadata.votelog[0][0] + '] '
-			+ voteduser.name + ': '
-			+ data.room.metadata.votelog[0][1]);
-	} else {
-		console.log('Vote: [+'
-			+ data.room.metadata.upvotes + ' -'
-			+ data.room.metadata.downvotes + ']');
+	if (config.logConsoleEvents) {
+		if (data.room.metadata.votelog[0][1] == 'up') {
+			var voteduser = usersList[data.room.metadata.votelog[0][0]];
+				console.log('Vote: [+'
+				+ data.room.metadata.upvotes + ' -'
+				+ data.room.metadata.downvotes + '] ['
+				+ data.room.metadata.votelog[0][0] + '] '
+				+ voteduser.name + ': '
+				+ data.room.metadata.votelog[0][1]);
+		} else {
+			console.log('Vote: [+'
+				+ data.room.metadata.upvotes + ' -'
+				+ data.room.metadata.downvotes + ']');
+		}
 	}
 });
 
@@ -162,7 +164,9 @@ bot.on('update_votes', function (data) {
 //Adds user to userlist, logs in console, and greets user in chat.
 bot.on('registered',   function (data) {
 	//Log event in console
-	console.log('Joined room: ' + data.user[0].name);
+	if (config.logConsoleEvents) {
+		console.log('Joined room: ' + data.user[0].name);
+	}
 
 	//Add user to usersList
 	var user = data.user[0];
@@ -195,7 +199,10 @@ bot.on('registered',   function (data) {
 //Runs when a user leaves the room
 //Removes user from usersList, logs in console
 bot.on('deregistered', function (data) {
-	console.log('Left room: ' + data.user[0].name);
+	//Log in console
+	if (config.logConsoleEvents) {
+		console.log('Left room: ' + data.user[0].name);
+	}
 	var user = data.user[0];
 	delete usersList[user.userid];
 });
@@ -209,7 +216,9 @@ bot.on('speak', function (data) {
 	var text = data.text;
 
 	//Log in console
-	console.log('Chat ['+data.userid+' ' +name+'] '+text);
+	if (config.logConsoleEvents) {
+		console.log('Chat ['+data.userid+' ' +name+'] '+text);
+	}
 
 	//Log in db (chatlog table)
 	client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
@@ -333,7 +342,6 @@ bot.on('speak', function (data) {
 				+ config.SONG_TABLE,
 				function selectCb(error, results, fields) {
 					var awesomes = results[0]['SUM'];
-					console.log(results[0]);
 					bot.speak('Total awesomes in this room: ' + awesomes);					
 				});
 			break;
@@ -486,6 +494,33 @@ bot.on('speak', function (data) {
 			}
 			break;
 
+		//Pulls a DJ after their song.
+		case 'pulldj':
+			if (admincheck(data.userid)) {
+				if (!userstepped) {
+					bot.remDj(usertostep);
+				}
+			}
+			break;
+
+		//Pulls the current dj.
+		case 'pullcurrent':
+			if (admincheck(data.userid)) {
+				bot.remDj(currentsong.djid);
+			}
+			break;
+
+		//Pulls all DJs on stage and plays a song.
+		case 'cb4':
+			bot.speak('Awwwww yeah');
+			for (var i = 0; i < 5; i++) {
+				setTimeout( function() {
+					bot.remDj(currentsong.djid);
+				}, (25*i));
+			}
+			bot.addDj();
+			break;
+
 		//Changes room
 		case 'Meow, go to IAS':
 			if (data.userid == config.MAINADMIN) {
@@ -564,7 +599,6 @@ bot.on('endsong', function (data) {
 	usertostep = currentsong.djid;
 
 	//Report song stats in chat
-	console.log('song end', data);
 	if (config.reportSongStats) {
 		bot.speak(currentsong.song + ' stats: awesomes: '
 			+ currentsong.up + ' lames: ' + currentsong.down);
@@ -585,18 +619,19 @@ bot.on('newsong', function (data) {
 	currentsong.listeners = data.room.metadata.listeners;
 	currentsong.started = data.room.metadata.current_song.starttime;
 
-	//If bot just played a song, step down
+	//Enforce stepdown rules
 	if (usertostep != null) {
 		if (usertostep == config.USERID) {
 			bot.remDj(config.USERID);
-		}
-		if (config.oneDownEnforce) {
+		} else if (config.oneDownEnforce) {
 			enforceRoom();
 		}
 	}
 
 	//Log in console
-	console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
+	if (config.logConsoleEvents) {
+		console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
+	}
 
 	//Auto-awesome
 	setTimeout(function() {
@@ -636,19 +671,23 @@ bot.on('newsong', function (data) {
 //Runs when a dj steps down
 //Logs in console
 bot.on('rem_dj', function (data) {
-	console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']'
-);
-	//Not used yet
+	//Log in console
+	if (config.logConsoleEvents) {
+		console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
+	}
+
+	//Adds user to 'step down' vars
+	//Used by enforceRoom()
 	if (usertostep == data.user[0].userid) {
 		userstepped = true;
 	}
-	
-	//Log in console
-	console.log('Stepped up: ' + data.user[0].name);
 });
 
 //Runs when a dj steps up
 //Logs in console
 bot.on('add_dj', function(data) {
-	console.log('Stepped up: ' + data.user[0].name);
+	//Log in console
+	if (config.logConsoleEvents) {
+		console.log('Stepped up: ' + data.user[0].name);
+	}
 });

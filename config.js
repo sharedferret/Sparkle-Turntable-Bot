@@ -29,8 +29,9 @@ exports.DBLOGIN    =  {
 }				//A mysql login for your bot
 
 //Flags
-exports.reportSongStats = true;
-exports.welcomeUsers    = true;
-exports.welcomeGreeting = 'Hi, ';
-exports.ownerResponse   = 'sharedferret is my mistress.';
-exports.oneDownEnforce  = true;
+exports.logConsoleEvents = true;	//Log room data in console
+exports.reportSongStats = true;		//Reports song stats in chat after each song
+exports.welcomeUsers    = true;		//Welcomes users in chat
+exports.welcomeGreeting = 'Hi, ';	//Greeting for users
+exports.ownerResponse   = 'sharedferret is my mistress.'; //Owner response
+exports.oneDownEnforce  = true;		//Enforce a One & Down room policy
