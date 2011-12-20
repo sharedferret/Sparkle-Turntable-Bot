@@ -28,7 +28,6 @@ client.query('USE '+ config.DATABASE);
 var bot = new Bot(config.AUTH, config.USERID);
 var usersList = { };
 
-var curdj;
 var usertostep;
 var userstepped = false;
 
@@ -91,6 +90,21 @@ function addToDb(data) {
 		currentsong.down, 
 		currentsong.listeners, 
 		currentsong.started]);
+}
+
+//Reminds a user that has just played a song to step down, and pulls them
+//off stage if they do not step down.
+function enforceRoom() {
+	setTimeout( function() {
+		if(!userstepped) {
+			bot.speak(usersList[usertostep].name + ', please step down');
+			setTimeout( function() {
+				if(!userstepped) {
+					bot.remDj(usertostep);
+				}
+			}, 22000);
+		}
+	}, 12000);
 }
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
@@ -324,6 +338,20 @@ bot.on('speak', function (data) {
 				});
 			break;
 
+		//Returns the three song plays with the most awesomes in the songlist table
+		case 'bestplays':
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, UP'
+				+ ' FROM SONGLIST ORDER BY UP DESC LIMIT 3',
+				function select(error, results, fields) {
+					var response = 'The song plays I\'ve heard with the most awesomes: ';
+					for (i in results) {
+						response += results[i]['TRACK'] + ': '
+							+ results[i]['UP'] + ' awesomes.  ';
+					}
+					bot.speak(response);
+			});
+			break;
+
 		//Returns the three most-played songs in the songlist table
 		case 'mostplayed':
 			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT'
@@ -335,7 +363,7 @@ bot.on('speak', function (data) {
 							+ results[i]['COUNT'] + ' plays.  ';
 					}
 					bot.speak(response);
-		});
+			});
 			break;
 
 		//Returns the three most-awesomed songs in the songlist table
@@ -533,7 +561,7 @@ bot.on('endsong', function (data) {
 
 	//Used for room enforcement
 	userstepped = false;
-	usertostep = curdj;
+	usertostep = currentsong.djid;
 
 	//Report song stats in chat
 	console.log('song end', data);
@@ -557,13 +585,13 @@ bot.on('newsong', function (data) {
 	currentsong.listeners = data.room.metadata.listeners;
 	currentsong.started = data.room.metadata.current_song.starttime;
 
-	//Update current dj
-	curdj = data.room.metadata.current_song.djid;
-
 	//If bot just played a song, step down
 	if (usertostep != null) {
 		if (usertostep == config.USERID) {
 			bot.remDj(config.USERID);
+		}
+		if (config.oneDownEnforce) {
+			enforceRoom();
 		}
 	}
 
