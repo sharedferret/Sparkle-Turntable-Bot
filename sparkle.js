@@ -55,6 +55,7 @@ function admincheck(userid) {
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
 //the result from a RNG.
+//TODO: pull this out to a db
 function reptarCall() {
 	var rand = Math.random();
 	if (rand < 0.05) {
@@ -156,21 +157,23 @@ bot.on('registered',   function (data) {
 	//Greet user
 	//Displays custom greetings for certain members
 	if(config.welcomeUsers) {
-		switch(user.name) {
-			case 'overlordnyaldee':
-				bot.speak('Meow!');
-				setTimeout(function() {
-					bot.speak('hugs overlordnyaldee');
-				}, 2000);
-				break;
-			case 'sharedferret':
-				bot.speak('Hi ferret!');
-				setTimeout(function() {
-					bot.speak('hugs sharedferret');
-				}, 2000);
-				break;
-			default:
-				bot.speak(config.welcomeGreeting + user.name + '!');
+		if (!user.name.match(/^ttdashboard/)) {
+			switch(user.name) {
+				case 'overlordnyaldee':
+					bot.speak('Meow!');
+					setTimeout(function() {
+						bot.speak('hugs overlordnyaldee');
+					}, 2000);
+					break;
+				case 'sharedferret':
+					bot.speak('Hi ferret!');
+					setTimeout(function() {
+						bot.speak('hugs sharedferret');
+					}, 2000);
+					break;
+				default:
+					bot.speak(config.welcomeGreeting + user.name + '!');
+			}
 		}
 	}
 });
@@ -238,7 +241,7 @@ bot.on('speak', function (data) {
 		case 'antiquing?':
 			bot.speak('boom!');
 			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
-			//bot.boot('4e3b6a804fe7d0578d003859'); //boot vic
+			//bot.boot('4e3b6a804fe7d0578d003859', 'didn\'t awesome tpc'); //boot vic
 			break;
 
 		//Responds to reptar-related call
@@ -455,27 +458,6 @@ bot.on('speak', function (data) {
 			}
 			break;
 
-		//Outputs first chorus of Reptar - Houseboat Babies
-		case 'CAN YOU FEEL IT?':
-			if (admincheck(data.userid)) {
-				setTimeout(function() {
-					bot.speak('YES I CAN FEEL IT');
-				}, 2000);
-				setTimeout(function() {
-					bot.speak('When I\'m at Jenny\'s house');
-				}, 5000);
-				setTimeout(function() {
-					bot.speak('I look for bad ends');
-				}, 8500);
-				setTimeout(function() {
-					bot.speak('Forget your parents!');
-				}, 10700);
-				setTimeout(function() {
-					bot.speak('But it\'s just cat and mouse!');
-				}, 13400);
-			}
-			break;
-
 		//Changes room
 		case 'Meow, go to IAS':
 			if (data.userid == config.MAINADMIN) {
@@ -592,6 +574,35 @@ bot.on('newsong', function (data) {
 	setTimeout(function() {
 		bot.vote('up');
 	}, 5000);
+
+	//SAIL!
+	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail')) {
+		setTimeout(function() {
+			bot.speak('SAIL!');
+		}, 34500);
+	}
+
+	//CAN YOU FEEL IT?
+	if(currentsong.song == 'Houseboat Babies') {
+		setTimeout(function() {
+			bot.speak('CAN YOU FEEL IT?')	;
+		}, 84500);
+		setTimeout(function() {
+			bot.speak('YES I CAN FEEL IT');
+		}, 86500);
+		setTimeout(function() {
+			bot.speak('When I\'m at Jenny\'s house');
+		}, 89500);
+		setTimeout(function() {
+			bot.speak('I look for bad ends');
+		}, 93000);
+		setTimeout(function() {
+			bot.speak('Forget your parents!');
+		}, 95200);
+		setTimeout(function() {
+			bot.speak('But it\'s just cat and mouse!');
+		}, 97900);
+	}
 });
 
 //Runs when a dj steps down
