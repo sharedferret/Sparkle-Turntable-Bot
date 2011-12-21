@@ -28,6 +28,7 @@ client.query('USE '+ config.DATABASE);
 var bot = new Bot(config.AUTH, config.USERID);
 var usersList = { };
 
+var djs = { };
 var usertostep;
 var userstepped = false;
 
@@ -115,15 +116,21 @@ bot.on('ready', function (data) {
 //Runs when the room is changed.
 //Updates the currentsong array and users array with new room data.
 bot.on('roomChanged', function(data) {
-	currentsong.artist = data.room.metadata.current_song.metadata.artist;
-	currentsong.song = data.room.metadata.current_song.metadata.song;
-	currentsong.djname = data.room.metadata.current_song.djname;
-	currentsong.djid = data.room.metadata.current_song.djid;
-	currentsong.up = data.room.metadata.upvotes;
-	currentsong.down = data.room.metadata.downvotes;
-	currentsong.listeners = data.room.metadata.listeners;
-	currentsong.started = data.room.metadata.current_song.starttime;
+	if (data.room.metadata.current_song != null) {
+		currentsong.artist = data.room.metadata.current_song.metadata.artist;
+		currentsong.song = data.room.metadata.current_song.metadata.song;
+		currentsong.djname = data.room.metadata.current_song.djname;
+		currentsong.djid = data.room.metadata.current_song.djid;
+		currentsong.up = data.room.metadata.upvotes;
+		currentsong.down = data.room.metadata.downvotes;
+		currentsong.listeners = data.room.metadata.listeners;
+		currentsong.started = data.room.metadata.current_song.starttime;
+	}
 
+	//populate dj list
+	//TODO: Comment
+	djs = data.room.metadata.djs;
+	
 	//Repopulates usersList array.
 	var users = data.users;
 	for (i in users) {
@@ -506,17 +513,17 @@ bot.on('speak', function (data) {
 		//Pulls the current dj.
 		case 'pullcurrent':
 			if (admincheck(data.userid)) {
-				bot.remDj(currentsong.djid);
+				if(currentsong.djid != null) {
+					bot.remDj(currentsong.djid);
+				}
 			}
 			break;
 
 		//Pulls all DJs on stage and plays a song.
 		case 'cb4':
 			bot.speak('Awwwww yeah');
-			for (var i = 0; i < 5; i++) {
-				setTimeout( function() {
-					bot.remDj(currentsong.djid);
-				}, (25*i));
+			for (i in djs) {
+				bot.remDj(djs[i]);
 			}
 			bot.addDj();
 			break;
@@ -545,7 +552,7 @@ bot.on('speak', function (data) {
 		//Step down if DJing
 		case 'Meow, step down':
 			if (admincheck(data.userid)) {
-				bot.remDj(USERID);
+				bot.remDj(config.USERID);
 			}
 			break;
 
@@ -672,6 +679,7 @@ bot.on('newsong', function (data) {
 //Logs in console
 bot.on('rem_dj', function (data) {
 	//Log in console
+	//console.log(data.user[0]);
 	if (config.logConsoleEvents) {
 		console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
 	}
@@ -680,6 +688,14 @@ bot.on('rem_dj', function (data) {
 	//Used by enforceRoom()
 	if (usertostep == data.user[0].userid) {
 		userstepped = true;
+		usertostep = null;
+	}
+
+	//Remove from dj list
+	for (i in djs) {
+		if (djs[i] == data.user[0].userid) {
+			delete djs[i];
+		}
 	}
 });
 
@@ -690,4 +706,5 @@ bot.on('add_dj', function(data) {
 	if (config.logConsoleEvents) {
 		console.log('Stepped up: ' + data.user[0].name);
 	}
+	djs[djs.length] = data.user[0].userid;
 });
