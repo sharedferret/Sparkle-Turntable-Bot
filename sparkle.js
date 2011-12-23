@@ -1,7 +1,7 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2011.12.19
+ *  Version: [dev] 2011.12.23
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
@@ -11,23 +11,20 @@
  *  
  *  Make sure parameters in config.js are set before running.
  *
- *  Currently assumes DATABASE, SONG_TABLE, and CHAT_TABLE exist.
 */
 
 var Bot    = require('ttapi');
 var config = require('./config.js');
 
 //Database
-//Caution: assumes database and tables already created
-//TODO: add catch for db/table not found to create them
 var mysql = require('mysql');
 var client = mysql.createClient(config.DBLOGIN);
-client.query('USE '+ config.DATABASE);
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.AUTH, config.USERID);
 var usersList = { };
 
+//Used for room enforcement
 var djs = { };
 var usertostep;
 var userstepped = false;
@@ -110,6 +107,33 @@ function enforceRoom() {
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
 bot.on('ready', function (data) {
+	//Creates DB and tables if needed, connects to db
+	client.query('CREATE DATABASE ' + config.DATABASE,
+		function(error) {
+			//yay
+		});
+	client.query('USE '+ config.DATABASE);
+	client.query('CREATE TABLE ' + config.SONG_TABLE
+		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+		+ ' artist VARCHAR(255),'
+		+ ' song VARCHAR(255),'
+		+ ' djname VARCHAR(255),'
+		+ ' djid VARCHAR(255),'
+		+ ' up INT(3),' + ' down INT(3),'
+		+ ' listeners INT(3),'
+		+ ' started INT(11))',
+		function (error) {
+			//yay
+		});
+	client.query('CREATE TABLE ' + config.CHAT_TABLE
+		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+		+ ' user VARCHAR(255),'
+		+ ' userid VARCHAR(255),'
+		+ ' chat VARCHAR(255))',
+		function (error) {
+			//yay
+		});
+			
 	bot.roomRegister(config.ROOMID);
 });
 
@@ -192,9 +216,9 @@ bot.on('registered',   function (data) {
 					break;
 				case 'sharedferret':
 					bot.speak('Hi ferret!');
-					setTimeout(function() {
-						bot.speak('hugs sharedferret');
-					}, 2000);
+				//	setTimeout(function() {
+				//		bot.speak('hugs sharedferret');
+				//	}, 2000);
 					break;
 				default:
 					bot.speak(config.welcomeGreeting + user.name + '!');
@@ -237,7 +261,7 @@ bot.on('speak', function (data) {
 		//--------------------------------------
 		//COMMAND LISTS
 		//--------------------------------------
-
+	
 		case '.sparklecommands':
 			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
 				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
