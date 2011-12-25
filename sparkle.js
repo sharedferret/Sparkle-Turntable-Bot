@@ -282,11 +282,13 @@ bot.on('speak', function (data) {
 
 		//Displays a list of users in the room
 		case '.users':
-			var output = 'Users in room: ';
+			var numUsers = 0;
+			var output = '';
 			for (var i in usersList) {
 				output += (usersList[i].name) + ', ';
+				numUsers++;
 			}
-			bot.speak(output.substring(0,output.length - 2));
+			bot.speak(numUsers + ' users in room: ' + output.substring(0,output.length - 2));
 			break;
 
 		//Boots user 'thisiskirby'
