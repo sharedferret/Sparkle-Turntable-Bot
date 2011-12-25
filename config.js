@@ -33,5 +33,5 @@ exports.logConsoleEvents = true;	//Log room data in console
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
 exports.welcomeGreeting = 'Hi, ';	//Greeting for users
-exports.ownerResponse   = 'sharedferret is my mistress.'; //Owner response
+exports.ownerResponse   = 'sharedferret is my owner!'; //Owner response
 exports.oneDownEnforce  = true;		//Enforce a One & Down room policy
