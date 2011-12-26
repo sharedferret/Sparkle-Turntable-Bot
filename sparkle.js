@@ -1,7 +1,7 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2011.12.23
+ *  Version: [dev] 2011.12.26
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
@@ -10,6 +10,7 @@
  *  Run: 'node sparkle.js'
  *  
  *  Make sure parameters in config.js are set before running.
+ *  Make sure a mysql server instance is running before starting the bot.
  *
 */
 
@@ -100,12 +101,15 @@ function enforceRoom() {
 				if(!userstepped) {
 					bot.remDj(usertostep);
 				}
-			}, 22000);
+			}, 19000);
 		}
-	}, 12000);
+	}, 15000);
 }
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
+//and sets up the database/tables
+//TODO: Actually handle those errors (99% of the time it'll be a "db/table
+//	already exists" error which is why I didn't handle them immediately)
 bot.on('ready', function (data) {
 	//Creates DB and tables if needed, connects to db
 	client.query('CREATE DATABASE ' + config.DATABASE,
@@ -113,6 +117,8 @@ bot.on('ready', function (data) {
 			//yay
 		});
 	client.query('USE '+ config.DATABASE);
+
+	//song table
 	client.query('CREATE TABLE ' + config.SONG_TABLE
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 		+ ' artist VARCHAR(255),'
@@ -125,6 +131,8 @@ bot.on('ready', function (data) {
 		function (error) {
 			//yay
 		});
+
+	//chat table
 	client.query('CREATE TABLE ' + config.CHAT_TABLE
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 		+ ' user VARCHAR(255),'
@@ -151,8 +159,7 @@ bot.on('roomChanged', function(data) {
 		currentsong.started = data.room.metadata.current_song.starttime;
 	}
 
-	//populate dj list
-	//TODO: Comment
+	//Creates the dj list
 	djs = data.room.metadata.djs;
 	
 	//Repopulates usersList array.
@@ -216,9 +223,6 @@ bot.on('registered',   function (data) {
 					break;
 				case 'sharedferret':
 					bot.speak('Hi ferret!');
-				//	setTimeout(function() {
-				//		bot.speak('hugs sharedferret');
-				//	}, 2000);
 					break;
 				default:
 					bot.speak(config.welcomeGreeting + user.name + '!');
@@ -265,7 +269,8 @@ bot.on('speak', function (data) {
 		case '.sparklecommands':
 			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
 				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
-				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize');
+				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize, '
+				+ 'pastnames [username]');
 			break;
 
 		case 'help':
@@ -273,7 +278,7 @@ bot.on('speak', function (data) {
 			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, '
 				+ '.twitter, .rules, .users, .owner, .source, mostplayed, '
 				+ 'mostawesomed, mostlamed, mymostplayed, mymostawesomed, '
-				+ 'mymostlamed, totalawesomes, dbsize');
+				+ 'mymostlamed, totalawesomes, dbsize, pastnames [username]');
 			break;
 
 		//--------------------------------------
@@ -296,7 +301,7 @@ bot.on('speak', function (data) {
 		case 'antiquing':
 		case 'antiquing?':
 			bot.speak('boom!');
-			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
+			bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
 			//bot.boot('4e3b6a804fe7d0578d003859', 'didn\'t awesome tpc'); //boot vic
 			break;
 
@@ -395,8 +400,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three most-played songs in the songlist table
 		case 'mostplayed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT'
-			+' FROM SONGLIST GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The songs I\'ve heard the most: ';
 					for (i in results) {
@@ -409,8 +414,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three most-awesomed songs in the songlist table
 		case 'mostawesomed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM'
-				+ ' FROM SONGLIST GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most awesomed songs I\'ve heard: ';
 					for (i in results) {
@@ -423,8 +428,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three most-lamed songs in the songlist table
 		case 'mostlamed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM'
-				+ ' FROM SONGLIST GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most lamed songs I\'ve heard: ';
 					for (i in results) {
@@ -437,8 +442,8 @@ bot.on('speak', function (data) {
 			
 		//Returns the user's three most played songs
 		case 'mymostplayed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT '
-				+ 'FROM SONGLIST WHERE (djid = \''+ data.userid +'\')'
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
+				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
 				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The songs I\'ve heard the most from you: ';
@@ -452,8 +457,8 @@ bot.on('speak', function (data) {
 
 		//Returns the user's three most-awesomed songs (aggregate)
 		case 'mymostawesomed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM'
-				+ ' FROM SONGLIST WHERE (djid = \''+ data.userid +'\')'
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
+				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
 				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most appreciated songs I\'ve heard from you: ';
@@ -467,8 +472,8 @@ bot.on('speak', function (data) {
 
 		//Returns the user's three most-lamed songs (aggregate)
 		case 'mymostlamed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM'
-				+ ' FROM SONGLIST WHERE (djid = \''+ data.userid +'\')'
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
+				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
 				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most hated songs I\'ve heard from you: ';
@@ -484,14 +489,14 @@ bot.on('speak', function (data) {
 		//Returns the number of songs logged and the size of the database in MB.
 		case 'dbsize':
 			//var response = 'Songs logged';
-			client.query('SELECT COUNT(STARTED) AS COUNT FROM SONGLIST',
+			client.query('SELECT COUNT(STARTED) AS COUNT FROM ' + config.SONG_TABLE,
 				function selectCb(error, results, fields) {
 					bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
 			});
 			setTimeout(function() {
 			client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
 				+ ' FROM information_schema.TABLES'
-				+ ' WHERE (table_schema = \'nodejs_mysql_sparkle\')',
+				+ ' WHERE (table_schema = \''config.DATABASE'\')',
 				function selectCb(error, results, fields) {
 					bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
 			});
@@ -612,7 +617,24 @@ bot.on('speak', function (data) {
 				process.exit(0);
 			}
 		
-	}				
+	}
+
+	//TODO: fix sql injection vulnerability
+	if (text.match(/^pastnames/)) {
+		//bot.speak('DEBUG: I\'m searching for '+text.substring(9));
+		client.query('SELECT djname FROM ' + config.SONG_TABLE
+			+ ' WHERE (djid LIKE (SELECT djid FROM '
+			+ config.SONG_TABLE + ' WHERE (djname like \''
+			+ text.substring(10) + '\') ORDER BY id DESC LIMIT 1)) GROUP BY djname',
+			function select(error, results, fields) {
+					var response = 'Names I\'ve seen that user go by: ';
+					for (i in results) {
+						response += results[i]['djname'] + ', ';
+					}
+					bot.speak(response.substring(0,response.length-2));
+			});
+	}
+				
 
 });
 
