@@ -13,13 +13,48 @@
  *  Make sure a mysql server instance is running before starting the bot.
  *
 */
+var Bot;
+var config;
+var mysql;
+var client;
 
-var Bot    = require('ttapi');
-var config = require('./config.js');
+//Creates the bot listener
+try {
+	Bot = require('ttapi');
+} catch(e) {
+	console.log(e);
+	console.log('It is likely that you do not have the ttapi node module installed.'
+		+ '\nUse the command \'npm install ttapi\' to install.');
+	process.exit(0);
+}
 
-//Database
-var mysql = require('mysql');
-var client = mysql.createClient(config.DBLOGIN);
+//Creates the config object
+try {
+	config = require('./config.js');
+} catch(e) {
+	console.log(e);
+	console.log('Ensure that config.js is present in this directory.');
+	process.exit(0);
+}
+
+//Creates mysql db object
+try {
+	mysql = require('mysql');
+} catch(e) {
+	console.log(e);
+	console.log('It is likely that you do not have the mysql node module installed.'
+		+ '\nUse the command \'npm install mysql\' to install.');
+	process.exit(0);
+}
+
+//Connects to mysql server
+try {
+	client = mysql.createClient(config.DBLOGIN);
+} catch(e) {
+	console.log(e);
+	console.log('Make sure that a mysql server instance is running and that the '
+		+ 'username and password information in config.js are correct.');
+}
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.AUTH, config.USERID);
@@ -386,8 +421,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three song plays with the most awesomes in the songlist table
 		case 'bestplays':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, UP'
-				+ ' FROM SONGLIST ORDER BY UP DESC LIMIT 3',
+			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, UP FROM '
+				+ config.SONG_TABLE + ' ORDER BY UP DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The song plays I\'ve heard with the most awesomes: ';
 					for (i in results) {
@@ -496,7 +531,7 @@ bot.on('speak', function (data) {
 			setTimeout(function() {
 			client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
 				+ ' FROM information_schema.TABLES'
-				+ ' WHERE (table_schema = \''config.DATABASE'\')',
+				+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
 				function selectCb(error, results, fields) {
 					bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
 			});
