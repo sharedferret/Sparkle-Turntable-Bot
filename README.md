@@ -8,8 +8,11 @@ To run the bot, you'll need the following installed:
 
 * node.js (http://nodejs.org/)
 * ttapi module for node.js
+
 	npm install ttapi
+
 * mysql module for node.js
+
 	npm install mysql
 * mysql (http://www.mysql.com/)
 
