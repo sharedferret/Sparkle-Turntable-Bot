@@ -72,8 +72,7 @@ var currentsong = {
 	djid: null,
 	up: 0,
 	down: 0,
-	listeners: 0,
-	started: 0};
+	listeners: 0};
 
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
@@ -123,7 +122,7 @@ function addToDb(data) {
 		currentsong.up, 
 		currentsong.down, 
 		currentsong.listeners, 
-		currentsong.started]);
+		new Date()]);
 }
 
 //Reminds a user that has just played a song to step down, and pulls them
@@ -162,7 +161,7 @@ bot.on('ready', function (data) {
 		+ ' djid VARCHAR(255),'
 		+ ' up INT(3),' + ' down INT(3),'
 		+ ' listeners INT(3),'
-		+ ' started INT(11))',
+		+ ' started DATETIME)',
 		function (error) {
 			//yay
 		});
@@ -172,7 +171,8 @@ bot.on('ready', function (data) {
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 		+ ' user VARCHAR(255),'
 		+ ' userid VARCHAR(255),'
-		+ ' chat VARCHAR(255))',
+		+ ' chat VARCHAR(255),'
+		+ ' time DATETIME)',
 		function (error) {
 			//yay
 		});
@@ -191,7 +191,6 @@ bot.on('roomChanged', function(data) {
 		currentsong.up = data.room.metadata.upvotes;
 		currentsong.down = data.room.metadata.downvotes;
 		currentsong.listeners = data.room.metadata.listeners;
-		currentsong.started = data.room.metadata.current_song.starttime;
 	}
 
 	//Creates the dj list
@@ -292,8 +291,8 @@ bot.on('speak', function (data) {
 
 	//Log in db (chatlog table)
 	client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
-		+ 'SET user = ?, userid = ?, chat = ?',
-		[data.name, data.userid, data.text]);
+		+ 'SET user = ?, userid = ?, chat = ?, time = ?',
+		[data.name, data.userid, data.text, new Date()]);
 
 	//If it's a supported command, handle it	
 	switch(text) {
@@ -654,13 +653,15 @@ bot.on('speak', function (data) {
 		
 	}
 
-	//TODO: fix sql injection vulnerability
+	//Returns a list of names a user has gone by
+	//Usage: 'pastnames [username]'
 	if (text.match(/^pastnames/)) {
 		//bot.speak('DEBUG: I\'m searching for '+text.substring(9));
 		client.query('SELECT djname FROM ' + config.SONG_TABLE
 			+ ' WHERE (djid LIKE (SELECT djid FROM '
-			+ config.SONG_TABLE + ' WHERE (djname like \''
-			+ text.substring(10) + '\') ORDER BY id DESC LIMIT 1)) GROUP BY djname',
+			+ config.SONG_TABLE + ' WHERE (djname like ?)'
+			+ ' ORDER BY id DESC LIMIT 1)) GROUP BY djname',
+			[text.substring(10)],
 			function select(error, results, fields) {
 					var response = 'Names I\'ve seen that user go by: ';
 					for (i in results) {
