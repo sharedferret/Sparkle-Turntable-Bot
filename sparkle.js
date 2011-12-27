@@ -432,6 +432,36 @@ bot.on('speak', function (data) {
 			});
 			break;
 
+		//Returns the three DJs with the most points logged in the songlist table
+		case 'bestdjs':
+			client.query('SELECT djname as DJ, sum(up) as POINTS from ' + config.SONG_TABLE
+				+ ' group by djname order by sum(up) desc limit 3',
+				function select(error, results, fields) {
+					console.log(results);
+					console.log(results[0]);
+					var response = 'The DJs with the most points accrued in this room: ';
+					for (i in results) {
+						response += results[i]['DJ'] + ': '
+							+ results[i]['POINTS'] + ' points.  ';
+					}
+					bot.speak(response);
+			});
+			break;
+
+		//Returns the three DJs with the most points logged in the songlist table
+		case 'worstdjs':
+			client.query('SELECT djname as DJ, sum(down) as POINTS from ' + config.SONG_TABLE
+				+ ' group by djname order by sum(down) desc limit 3',
+				function select(error, results, fields) {
+					var response = 'The DJs with the most lames accrued in this room: ';
+					for (i in results) {
+						response += results[i]['DJ'] + ': '
+							+ results[i]['POINTS'] + ' lames.  ';
+					}
+					bot.speak(response);
+			});
+			break;
+
 		//Returns the three most-played songs in the songlist table
 		case 'mostplayed':
 			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
@@ -736,6 +766,10 @@ bot.on('newsong', function (data) {
 		}, 34500);
 	}
 
+	// ****
+	// REPTAR SINGALONGS
+	// ****
+
 	//CAN YOU FEEL IT?
 	if(currentsong.song == 'Houseboat Babies') {
 		setTimeout(function() {
@@ -756,6 +790,24 @@ bot.on('newsong', function (data) {
 		setTimeout(function() {
 			bot.speak('But it\'s just cat and mouse!');
 		}, 97900);
+	}
+
+	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff')) {
+		setTimeout(function() {
+			bot.speak('Well I won\'t call you!');
+		}, 184000);
+		setTimeout(function() {
+			bot.speak('If you don\'t call me!');
+		}, 186000);
+		setTimeout(function() {
+			bot.speak('No no I won\'t call you!');
+		}, 188000);
+		setTimeout(function() {
+			bot.speak('If you don\'t call me!');
+		}, 190000);
+		setTimeout(function() {
+			bot.speak('Yeah!');
+		}, 192000);
 	}
 });
 
