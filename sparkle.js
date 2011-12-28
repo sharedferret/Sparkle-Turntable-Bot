@@ -435,7 +435,7 @@ bot.on('speak', function (data) {
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'bestdjs':
 			client.query('SELECT djname as DJ, sum(up) as POINTS from ' + config.SONG_TABLE
-				+ ' group by djname order by sum(up) desc limit 3',
+				+ ' group by djid order by sum(up) desc limit 3',
 				function select(error, results, fields) {
 					console.log(results);
 					console.log(results[0]);
@@ -451,7 +451,7 @@ bot.on('speak', function (data) {
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'worstdjs':
 			client.query('SELECT djname as DJ, sum(down) as POINTS from ' + config.SONG_TABLE
-				+ ' group by djname order by sum(down) desc limit 3',
+				+ ' group by djid order by sum(down) desc limit 3',
 				function select(error, results, fields) {
 					var response = 'The DJs with the most lames accrued in this room: ';
 					for (i in results) {
@@ -755,9 +755,10 @@ bot.on('newsong', function (data) {
 	}
 
 	//Auto-awesome
+	var randomwait = Math.floor(Math.random() * 20) + 4;
 	setTimeout(function() {
 		bot.vote('up');
-	}, 5000);
+	}, randomwait * 1000);
 
 	//SAIL!
 	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail')) {
