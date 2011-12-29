@@ -420,7 +420,7 @@ bot.on('speak', function (data) {
 		//Returns three similar songs to the one playing.
 		//Uses last.fm's API
                 case '.similar':
-                        if (config.lastfmapi) {
+                        if (config.uselastfmAPI) {
 			request('http://ws.audioscrobbler.com/2.0/?method=track.getSimilar'
                                 + '&artist=' + encodeURIComponent(currentsong.artist)
                                 + '&track='  + encodeURIComponent(currentsong.song)
@@ -429,7 +429,7 @@ bot.on('speak', function (data) {
                                         if(!error && response.statusCode == 200) {
                                                 var formatted = eval('(' + body + ')');
 						var botstring = 'Similar songs to ' + currentsong.song + ': ';
-						if (formatted.similartracks.track != null) {
+						if (formatted.similartracks.track[0] != null) {
 							for (i in formatted.similartracks.track) {
 								botstring += formatted.similartracks.track[i].name + ' by '
 									+ formatted.similartracks.track[i].artist.name + ', ';
@@ -444,7 +444,7 @@ bot.on('speak', function (data) {
 		//Returns three similar artists to the one playing.
 		//Uses last.fm's API
 		case '.similarartists':
-			if (config.lastfmapi) {
+			if (config.uselastfmAPI) {
 			request('http://ws.audioscrobbler.com/2.0/?method=artist.getSimilar'
                                 + '&artist=' + encodeURIComponent(currentsong.artist)
                                 + '&api_key=' + config.lastfmkey + '&format=json&limit=3',
@@ -452,7 +452,7 @@ bot.on('speak', function (data) {
                                         if(!error && response.statusCode == 200) {
                                                 var formatted = eval('(' + body + ')');
                                                 var botstring = 'Similar artists to ' + currentsong.artist + ': ';
-						if (formatted.similarartists.artist != null) {
+						if (formatted.similarartists.artist[0] != null) {
                                                 	for (i in formatted.similarartists.artist) {
                                                 	        botstring += formatted.similarartists.artist[i].name + ', ';
                                                 	}
