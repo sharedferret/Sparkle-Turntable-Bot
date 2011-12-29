@@ -17,6 +17,7 @@ var Bot;
 var config;
 var mysql;
 var client;
+var request;
 
 //Creates the bot listener
 try {
@@ -54,6 +55,16 @@ try {
 	console.log(e);
 	console.log('Make sure that a mysql server instance is running and that the '
 		+ 'username and password information in config.js are correct.');
+}
+
+//Initializes request
+try {
+	request = require('request');
+} catch(e) {
+	console.log(e);
+	console.log('It is likely that you do not have the request node module installed.'
+		+ '\nUse the command \'npm install request\' to install.');
+	process.exit(0);
 }
 
 //Creates the bot and initializes global vars
@@ -616,11 +627,13 @@ bot.on('speak', function (data) {
 
 		//Pulls all DJs on stage and plays a song.
 		case 'cb4':
-			bot.speak('Awwwww yeah');
-			for (i in djs) {
-				bot.remDj(djs[i]);
+			if (admincheck(data.userid)) {
+				bot.speak('Awwwww yeah');
+				for (i in djs) {
+					bot.remDj(djs[i]);
+				}
+				bot.addDj();
 			}
-			bot.addDj();
 			break;
 
 		//Changes room
@@ -681,6 +694,32 @@ bot.on('speak', function (data) {
 				process.exit(0);
 			}
 		
+	}
+
+	//Returns weather for a user-supplied city using YQL.
+	//Returns bot's location if no location supplied.
+	if(text.match(/^.weather/)) {
+		var userlocation = text.substring(9);
+		if (userlocation == null) {
+			userlocation = 20151;
+		}
+		userlocation = userlocation.replace(',','%2c');
+		userlocation = userlocation.replace(' ','%20');
+		console.log(userlocation);
+		request('http://query.yahooapis.com/v1/public/yql?q=use%20\'http%3A%2F%2Fgithub'
+		        + '.com%2Fyql%2Fyql-tables%2Fraw%2Fmaster%2Fweather%2Fweather.bylocatio'
+		        + 'n.xml\'%20as%20we%3B%0Aselect%20*%20from%20we%20where%20location%3D'
+		        + '%22' + userlocation + '%22%20and%20unit%3D\'f\'&format=json&diagnostics=false',
+        	function cbfunc(error, response, body) {
+        	        if (!error && response.statusCode == 200) {
+        	                var formatted = eval('(' + body + ')');
+        	        var loc = formatted.query.results.weather.rss.channel.location.city + ', '
+        	                + formatted.query.results.weather.rss.channel.location.region;
+        	        var temp = formatted.query.results.weather.rss.channel.item.condition.temp;
+        	        var cond = formatted.query.results.weather.rss.channel.item.condition.text;
+        	        bot.speak('The weather in ' + loc + ' is ' + temp + 'F and ' + cond + '.');
+                }
+        });
 	}
 
 	//Returns a list of names a user has gone by
