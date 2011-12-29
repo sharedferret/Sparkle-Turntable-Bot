@@ -1,7 +1,7 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2011.12.26
+ *  Version: [dev] 2011.12.28
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
@@ -315,7 +315,8 @@ bot.on('speak', function (data) {
 			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
 				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
 				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize, '
-				+ 'pastnames [username]');
+				+ 'pastnames [username], .similar, .similarartists, '
+				+ '.weather [zip]');
 			break;
 
 		case 'help':
@@ -323,7 +324,8 @@ bot.on('speak', function (data) {
 			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, '
 				+ '.twitter, .rules, .users, .owner, .source, mostplayed, '
 				+ 'mostawesomed, mostlamed, mymostplayed, mymostawesomed, '
-				+ 'mymostlamed, totalawesomes, dbsize, pastnames [username]');
+				+ 'mymostlamed, totalawesomes, dbsize, pastnames [username], '
+				+ '.similar, .similarartists, .weather [zip]');
 			break;
 
 		//--------------------------------------
@@ -414,6 +416,49 @@ bot.on('speak', function (data) {
 				bot.speak('hugs ' + data.name);
 			}, timetowait);
 			break;
+
+		//Returns three similar songs to the one playing.
+		//Uses last.fm's API
+                case '.similar':
+                        if (config.lastfmapi) {
+			request('http://ws.audioscrobbler.com/2.0/?method=track.getSimilar'
+                                + '&artist=' + encodeURIComponent(currentsong.artist)
+                                + '&track='  + encodeURIComponent(currentsong.song)
+                                + '&api_key=' + config.lastfmkey + '&format=json&limit=3',
+                                function cbfunc(error, response, body) {
+                                        if(!error && response.statusCode == 200) {
+                                                var formatted = eval('(' + body + ')');
+						var botstring = 'Similar songs to ' + currentsong.song + ': ';
+						for (i in formatted.similartracks.track) {
+							botstring += formatted.similartracks.track[i].name + ' by '
+								+ formatted.similartracks.track[i].artist.name + ', ';
+						}
+						bot.speak(botstring.substring(0, botstring.length - 2));
+                                        }
+                                });
+			}
+                        break;
+	
+		//Returns three similar artists to the one playing.
+		//Uses last.fm's API
+		case '.similarartists':
+			if (config.lastfmapi) {
+			request('http://ws.audioscrobbler.com/2.0/?method=artist.getSimilar'
+                                + '&artist=' + encodeURIComponent(currentsong.artist)
+                                + '&api_key=' + config.lastfmkey + '&format=json&limit=3',
+                                function cbfunc(error, response, body) {
+                                        if(!error && response.statusCode == 200) {
+                                                var formatted = eval('(' + body + ')');
+                                                var botstring = 'Similar artists to ' + currentsong.artist + ': ';
+                                                for (i in formatted.similarartists.artist) {
+                                                        botstring += formatted.similarartists.artist[i].name + ', ';
+                                                }
+                                                bot.speak(botstring.substring(0, botstring.length - 2));
+                                        }
+                                });
+			}
+			break;
+
 
 		//--------------------------------------
 		//USER DATABASE COMMANDS
@@ -703,22 +748,22 @@ bot.on('speak', function (data) {
 		if (userlocation == null) {
 			userlocation = 20151;
 		}
-		userlocation = userlocation.replace(',','%2c');
-		userlocation = userlocation.replace(' ','%20');
-		console.log(userlocation);
 		request('http://query.yahooapis.com/v1/public/yql?q=use%20\'http%3A%2F%2Fgithub'
 		        + '.com%2Fyql%2Fyql-tables%2Fraw%2Fmaster%2Fweather%2Fweather.bylocatio'
 		        + 'n.xml\'%20as%20we%3B%0Aselect%20*%20from%20we%20where%20location%3D'
-		        + '%22' + userlocation + '%22%20and%20unit%3D\'f\'&format=json&diagnostics=false',
+		        + '%22' + encodeURIComponent(userlocation) + '%22%20and%20unit%3D\'f\'&format=json&diagnostics=false',
         	function cbfunc(error, response, body) {
         	        if (!error && response.statusCode == 200) {
         	                var formatted = eval('(' + body + ')');
-        	        var loc = formatted.query.results.weather.rss.channel.location.city + ', '
-        	                + formatted.query.results.weather.rss.channel.location.region;
-        	        var temp = formatted.query.results.weather.rss.channel.item.condition.temp;
-        	        var cond = formatted.query.results.weather.rss.channel.item.condition.text;
-        	        bot.speak('The weather in ' + loc + ' is ' + temp + 'F and ' + cond + '.');
-                }
+        	        	if(formatted.query.results.weather.rss.channel.location != null) {
+				var loc = formatted.query.results.weather.rss.channel.location.city + ', '
+        	                	+ formatted.query.results.weather.rss.channel.location.region;
+        	        	var temp = formatted.query.results.weather.rss.channel.item.condition.temp;
+        	        	var cond = formatted.query.results.weather.rss.channel.item.condition.text;
+        	        	bot.speak('The weather in ' + loc + ' is ' + temp + 'ºF and ' + cond + '.');
+                	} else {
+				bot.speak('Sorry, I can\'t find that location.');
+			}}
         });
 	}
 

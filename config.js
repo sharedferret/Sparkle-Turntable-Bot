@@ -28,10 +28,15 @@ exports.DBLOGIN    =  {
 	password: '#####',
 }				//A mysql login for your bot
 
+//Last.fm API key for use with last.fm API calls
+//Obtain an API key at http://www.last.fm/api/ or disable under Flags
+exports.lastfmkey = '#####';
+
 //Flags
-exports.logConsoleEvents = true;	//Log room data in console
+exports.logConsoleEvents = false;	//Log room data in console
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
 exports.welcomeGreeting = 'Hi, ';	//Greeting for users
 exports.ownerResponse   = 'sharedferret is my owner!'; //Owner response
 exports.oneDownEnforce  = true;		//Enforce a One & Down room policy
+exports.uselastfmAPI    = false;
