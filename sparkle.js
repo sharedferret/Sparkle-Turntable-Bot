@@ -429,9 +429,11 @@ bot.on('speak', function (data) {
                                         if(!error && response.statusCode == 200) {
                                                 var formatted = eval('(' + body + ')');
 						var botstring = 'Similar songs to ' + currentsong.song + ': ';
-						for (i in formatted.similartracks.track) {
-							botstring += formatted.similartracks.track[i].name + ' by '
-								+ formatted.similartracks.track[i].artist.name + ', ';
+						if (formatted.similartracks.track != null) {
+							for (i in formatted.similartracks.track) {
+								botstring += formatted.similartracks.track[i].name + ' by '
+									+ formatted.similartracks.track[i].artist.name + ', ';
+							}
 						}
 						bot.speak(botstring.substring(0, botstring.length - 2));
                                         }
@@ -450,9 +452,11 @@ bot.on('speak', function (data) {
                                         if(!error && response.statusCode == 200) {
                                                 var formatted = eval('(' + body + ')');
                                                 var botstring = 'Similar artists to ' + currentsong.artist + ': ';
-                                                for (i in formatted.similarartists.artist) {
-                                                        botstring += formatted.similarartists.artist[i].name + ', ';
-                                                }
+						if (formatted.similarartists.artist != null) {
+                                                	for (i in formatted.similarartists.artist) {
+                                                	        botstring += formatted.similarartists.artist[i].name + ', ';
+                                                	}
+						}
                                                 bot.speak(botstring.substring(0, botstring.length - 2));
                                         }
                                 });
