@@ -1,11 +1,11 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2011.12.28
+ *  Version: [dev] 2011.12.30
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
- *  Uses node.js with modules ttapi, node_mysql
+ *  Uses node.js with modules ttapi, node_mysql, request
  * 
  *  Run: 'node sparkle.js'
  *  
@@ -57,7 +57,7 @@ try {
 		+ 'username and password information in config.js are correct.');
 }
 
-//Initializes request
+//Initializes request module
 try {
 	request = require('request');
 } catch(e) {
@@ -98,7 +98,6 @@ function admincheck(userid) {
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
 //the result from a RNG.
-//TODO: pull this out to a db
 function reptarCall() {
 	var rand = Math.random();
 	if (rand < 0.05) {
@@ -125,7 +124,8 @@ function reptarCall() {
 function addToDb(data) {
 	client.query(
 		'INSERT INTO '+ config.SONG_TABLE +' '
-		+ 'SET artist = ?,song = ?, djname = ?, djid = ?, up = ?, down = ?, listeners = ?, started = ?',
+		+ 'SET artist = ?,song = ?, djname = ?, djid = ?, up = ?, down = ?,'
+		+ 'listeners = ?, started = ?',
 		[currentsong.artist, 
 		currentsong.song, 
 		currentsong.djname, 
@@ -159,7 +159,9 @@ bot.on('ready', function (data) {
 	//Creates DB and tables if needed, connects to db
 	client.query('CREATE DATABASE ' + config.DATABASE,
 		function(error) {
-			//yay
+			if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
+				throw (error);
+			}
 		});
 	client.query('USE '+ config.DATABASE);
 
@@ -174,7 +176,10 @@ bot.on('ready', function (data) {
 		+ ' listeners INT(3),'
 		+ ' started DATETIME)',
 		function (error) {
-			//yay
+			//Handle an error if it's not a table already exists error
+			if(error && error.number != 1050) {
+				throw (error);
+			}
 		});
 
 	//chat table
@@ -185,7 +190,10 @@ bot.on('ready', function (data) {
 		+ ' chat VARCHAR(255),'
 		+ ' time DATETIME)',
 		function (error) {
-			//yay
+			//Handle an error if it's not a table already exists error
+			if(error && error.number != 1050) {
+				throw (error);
+			}
 		});
 			
 	bot.roomRegister(config.ROOMID);
@@ -194,13 +202,14 @@ bot.on('ready', function (data) {
 //Runs when the room is changed.
 //Updates the currentsong array and users array with new room data.
 bot.on('roomChanged', function(data) {
+	//Fill currentsong array with room data
 	if (data.room.metadata.current_song != null) {
-		currentsong.artist = data.room.metadata.current_song.metadata.artist;
-		currentsong.song = data.room.metadata.current_song.metadata.song;
-		currentsong.djname = data.room.metadata.current_song.djname;
-		currentsong.djid = data.room.metadata.current_song.djid;
-		currentsong.up = data.room.metadata.upvotes;
-		currentsong.down = data.room.metadata.downvotes;
+		currentsong.artist    = data.room.metadata.current_song.metadata.artist;
+		currentsong.song      = data.room.metadata.current_song.metadata.song;
+		currentsong.djname    = data.room.metadata.current_song.djname;
+		currentsong.djid      = data.room.metadata.current_song.djid;
+		currentsong.up        = data.room.metadata.upvotes;
+		currentsong.down      = data.room.metadata.downvotes;
 		currentsong.listeners = data.room.metadata.listeners;
 	}
 
@@ -267,6 +276,7 @@ bot.on('registered',   function (data) {
 					}, 2000);
 					break;
 				case 'sharedferret':
+				case 'ReptarFerret':
 					bot.speak('Hi ferret!');
 					break;
 				default:
@@ -283,8 +293,9 @@ bot.on('deregistered', function (data) {
 	if (config.logConsoleEvents) {
 		console.log('Left room: ' + data.user[0].name);
 	}
-	var user = data.user[0];
-	delete usersList[user.userid];
+	
+	//Remove user from userlist
+	delete usersList[data.user[0].userid];
 });
 
 //Runs when something is said in chat
@@ -323,9 +334,8 @@ bot.on('speak', function (data) {
 		case 'commands':
 			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, '
 				+ '.twitter, .rules, .users, .owner, .source, mostplayed, '
-				+ 'mostawesomed, mostlamed, mymostplayed, mymostawesomed, '
-				+ 'mymostlamed, totalawesomes, dbsize, pastnames [username], '
-				+ '.similar, .similarartists, .weather [zip]');
+				+ 'mostawesomed, mymostplayed, mymostawesomed, '
+				+ 'pastnames [username], .similar, .similarartists');
 			break;
 
 		//--------------------------------------
@@ -340,7 +350,8 @@ bot.on('speak', function (data) {
 				output += (usersList[i].name) + ', ';
 				numUsers++;
 			}
-			bot.speak(numUsers + ' users in room: ' + output.substring(0,output.length - 2));
+			bot.speak(numUsers + ' users in room: '
+				+ output.substring(0,output.length - 2));
 			break;
 
 		//Boots user 'thisiskirby'
@@ -348,7 +359,7 @@ bot.on('speak', function (data) {
 		case 'antiquing':
 		case 'antiquing?':
 			bot.speak('boom!');
-			bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
+			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
 			//bot.boot('4e3b6a804fe7d0578d003859', 'didn\'t awesome tpc'); //boot vic
 			break;
 
@@ -358,6 +369,7 @@ bot.on('speak', function (data) {
 				bot.speak('YES I CAN FEEL IT!');
 			}, 1200);
 			break;
+			
 		case 'I enjoy that band.':
 			setTimeout(function() {
 				bot.speak('Me too!');
@@ -416,54 +428,67 @@ bot.on('speak', function (data) {
 				bot.speak('hugs ' + data.name);
 			}, timetowait);
 			break;
+			
+		//--------------------------------------
+		//HTTP REST QUERIES
+		//--------------------------------------
 
 		//Returns three similar songs to the one playing.
 		//Uses last.fm's API
-                case '.similar':
-                        if (config.uselastfmAPI) {
-			request('http://ws.audioscrobbler.com/2.0/?method=track.getSimilar'
-                                + '&artist=' + encodeURIComponent(currentsong.artist)
-                                + '&track='  + encodeURIComponent(currentsong.song)
-                                + '&api_key=' + config.lastfmkey + '&format=json&limit=3',
-                                function cbfunc(error, response, body) {
-                                        if(!error && response.statusCode == 200) {
-                                                var formatted = eval('(' + body + ')');
-						var botstring = 'Similar songs to ' + currentsong.song + ': ';
-						try {
-							for (i in formatted.similartracks.track) {
-								botstring += formatted.similartracks.track[i].name + ' by '
-									+ formatted.similartracks.track[i].artist.name + ', ';
+        case '.similar':
+        	if (config.uselastfmAPI) {
+				request('http://ws.audioscrobbler.com/2.0/?method=track.getSimilar'
+					+ '&artist=' + encodeURIComponent(currentsong.artist)
+					+ '&track='  + encodeURIComponent(currentsong.song)
+      				+ '&api_key=' + config.lastfmkey + '&format=json&limit=5',
+                	function cbfunc(error, response, body) {
+                    	if(!error && response.statusCode == 200) {
+                        	var formatted = eval('(' + body + ')');
+							var botstring = 'Similar songs to ' + currentsong.song + ': ';
+							try {
+								//for (i in formatted.similartracks.track) {
+								//	botstring += formatted.similartracks.track[i].name + ' by '
+								//		+ formatted.similartracks.track[i].artist.name + ', ';
+								//}
+								
+								//Using this instead because last.fm always returns
+								//two songs by the same artist when making this call
+								botstring += formatted.similartracks.track[2].name + ' by '
+									+ formatted.similartracks.track[2].artist.name + ', ';
+								botstring += formatted.similartracks.track[3].name + ' by '
+									+ formatted.similartracks.track[3].artist.name + ', ';
+								botstring += formatted.similartracks.track[4].name + ' by '
+									+ formatted.similartracks.track[4].artist.name + ', ';
+							} catch (e) {
+								//
 							}
-						} catch (e) {
-							//
-						}
-						bot.speak(botstring.substring(0, botstring.length - 2));
-                                        }
-                                });
+							bot.speak(botstring.substring(0, botstring.length - 2));
+                        }
+                });
 			}
-                        break;
+        	break;
 	
 		//Returns three similar artists to the one playing.
 		//Uses last.fm's API
 		case '.similarartists':
 			if (config.uselastfmAPI) {
-			request('http://ws.audioscrobbler.com/2.0/?method=artist.getSimilar'
-                                + '&artist=' + encodeURIComponent(currentsong.artist)
-                                + '&api_key=' + config.lastfmkey + '&format=json&limit=3',
-                                function cbfunc(error, response, body) {
-                                        if(!error && response.statusCode == 200) {
-                                                var formatted = eval('(' + body + ')');
-                                                var botstring = 'Similar artists to ' + currentsong.artist + ': ';
-						try {
-                                                	for (i in formatted.similarartists.artist) {
-                                                	        botstring += formatted.similarartists.artist[i].name + ', ';
-                                                	}
-						} catch (e) {
-							//
-						}
-                                                bot.speak(botstring.substring(0, botstring.length - 2));
-                                        }
-                                });
+				request('http://ws.audioscrobbler.com/2.0/?method=artist.getSimilar'
+                	+ '&artist=' + encodeURIComponent(currentsong.artist)
+                    + '&api_key=' + config.lastfmkey + '&format=json&limit=4',
+                	function cbfunc(error, response, body) {
+                    	if(!error && response.statusCode == 200) {
+                        	var formatted = eval('(' + body + ')');
+                            var botstring = 'Similar artists to ' + currentsong.artist + ': ';
+							try {
+                            	for (i in formatted.similarartists.artist) {
+                                    botstring += formatted.similarartists.artist[i].name + ', ';
+                                }
+							} catch (e) {
+								//
+							}
+                            bot.speak(botstring.substring(0, botstring.length - 2));
+                        }
+                });
 			}
 			break;
 
@@ -501,8 +526,6 @@ bot.on('speak', function (data) {
 			client.query('SELECT djname as DJ, sum(up) as POINTS from ' + config.SONG_TABLE
 				+ ' group by djid order by sum(up) desc limit 3',
 				function select(error, results, fields) {
-					console.log(results);
-					console.log(results[0]);
 					var response = 'The DJs with the most points accrued in this room: ';
 					for (i in results) {
 						response += results[i]['DJ'] + ': '
@@ -529,7 +552,8 @@ bot.on('speak', function (data) {
 		//Returns the three most-played songs in the songlist table
 		case 'mostplayed':
 			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) '
+				+ 'DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The songs I\'ve heard the most: ';
 					for (i in results) {
@@ -543,7 +567,8 @@ bot.on('speak', function (data) {
 		//Returns the three most-awesomed songs in the songlist table
 		case 'mostawesomed':
 			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
+				+ 'DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most awesomed songs I\'ve heard: ';
 					for (i in results) {
@@ -557,7 +582,8 @@ bot.on('speak', function (data) {
 		//Returns the three most-lamed songs in the songlist table
 		case 'mostlamed':
 			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
+				+ 'DESC LIMIT 3',
 				function select(error, results, fields) {
 					var response = 'The most lamed songs I\'ve heard: ';
 					for (i in results) {
@@ -622,12 +648,12 @@ bot.on('speak', function (data) {
 					bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
 			});
 			setTimeout(function() {
-			client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
-				+ ' FROM information_schema.TABLES'
-				+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
-				function selectCb(error, results, fields) {
-					bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
-			});
+				client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
+					+ ' FROM information_schema.TABLES'
+					+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
+					function selectCb(error, results, fields) {
+						bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
+				});
 			}, 500);
 			break;
 
@@ -753,13 +779,14 @@ bot.on('speak', function (data) {
 	//Returns bot's location if no location supplied.
 	if(text.match(/^.weather/)) {
 		var userlocation = text.substring(9);
-		if (userlocation == null) {
+		if (userlocation == '') {
 			userlocation = 20151;
 		}
 		request('http://query.yahooapis.com/v1/public/yql?q=use%20\'http%3A%2F%2Fgithub'
 		        + '.com%2Fyql%2Fyql-tables%2Fraw%2Fmaster%2Fweather%2Fweather.bylocatio'
 		        + 'n.xml\'%20as%20we%3B%0Aselect%20*%20from%20we%20where%20location%3D'
-		        + '%22' + encodeURIComponent(userlocation) + '%22%20and%20unit%3D\'f\'&format=json&diagnostics=false',
+		        + '%22' + encodeURIComponent(userlocation) + '%22%20and%20unit%3D\'f\''
+		        + '&format=json&diagnostics=false',
         	function cbfunc(error, response, body) {
         	        if (!error && response.statusCode == 200) {
         	                var formatted = eval('(' + body + ')');
@@ -832,6 +859,12 @@ bot.on('newsong', function (data) {
 	currentsong.listeners = data.room.metadata.listeners;
 	currentsong.started = data.room.metadata.current_song.starttime;
 
+	//Check something
+	if (currentsong.artist.match(/skrillex/) || currentsong.song.match(/skrillex/)) {
+		bot.remDj(currentsong.djid);
+		bot.speak('NO.');
+	}
+
 	//Enforce stepdown rules
 	if (usertostep != null) {
 		if (usertostep == config.USERID) {
@@ -847,24 +880,26 @@ bot.on('newsong', function (data) {
 	}
 
 	//Auto-awesome
-	var randomwait = Math.floor(Math.random() * 20) + 4;
-	setTimeout(function() {
-		bot.vote('up');
-	}, randomwait * 1000);
+	if (config.autoAwesome) {
+		var randomwait = Math.floor(Math.random() * 20) + 4;
+		setTimeout(function() {
+			bot.vote('up');
+		}, randomwait * 1000);
+	}
 
 	//SAIL!
-	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail')) {
+	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail') && config.botSing) {
 		setTimeout(function() {
 			bot.speak('SAIL!');
 		}, 34500);
 	}
 
-	// ****
+	//--------------------------------------
 	// REPTAR SINGALONGS
-	// ****
+	//--------------------------------------
 
 	//CAN YOU FEEL IT?
-	if(currentsong.song == 'Houseboat Babies') {
+	if(currentsong.song == 'Houseboat Babies' && config.botSing) {
 		setTimeout(function() {
 			bot.speak('CAN YOU FEEL IT?')	;
 		}, 84500);
@@ -885,7 +920,7 @@ bot.on('newsong', function (data) {
 		}, 97900);
 	}
 
-	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff')) {
+	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff') && config.botSing) {
 		setTimeout(function() {
 			bot.speak('Well I won\'t call you!');
 		}, 184000);
