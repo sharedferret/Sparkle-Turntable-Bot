@@ -34,89 +34,61 @@ The bot can:
 
 ## Commands
 
-* .sparklecommands
-
-	Displays a list of commands supported by this bot.
+* .sparklecommands - Displays a list of commands supported by this bot.
 
 * help
-* commands
-
-	Displays a list of commands available in the Indie/Classic Alt 1+Done room
+* commands - Displays a list of commands available in the Indie/Classic Alt 1+Done room
 	
 
-* .users
-	Displays a list of users in the room.
+* .users - Displays a list of users in the room.
 
-* CAN YOU FEEL IT!?
-	Bot responds with "YES I CAN FEEL IT!"
+* CAN YOU FEEL IT!? - Bot responds with "YES I CAN FEEL IT!"
 
-* I enjoy that band.
-	Bot responds with "Me too!"
+* I enjoy that band. - Bot responds with "Me too!"
 
-* .owner
-	Outputs a bot owner response configurable in config.js
+* .owner - Outputs a bot owner response configurable in config.js
 
-* .source
-	Provides a link to this GitHub project
+* .source - Provides a link to this GitHub project
 
-* ping
-	Responds to the issuing user that they are still in the room.
+* ping - Responds to the issuing user that they are still in the room.
 
-* reptar
-	Responds with a variant of "rawr!"
+* reptar - Responds with a variant of "rawr!"
 
-* rules
-	Displays the room rules (defaults to Indie/Classic Alt 1 & Done room rules).
+* rules - Displays the room rules (defaults to Indie/Classic Alt 1 & Done room rules).
 
 * hugs xxMEOWxx
-* hugs meow
-	Hugs the issuing user back in chat.
+* hugs meow - Hugs the issuing user back in chat.
 
-* .similar
-	Gives three similar songs to the one playing using last.fm's database.
+* .similar - Gives three similar songs to the one playing using last.fm's database.
 
-* .similarartists
-	Gives four similar artists to the one playing using last.fm's database.
+* .similarartists - Gives four similar artists to the one playing using last.fm's database.
 
-* totalawesomes
-	Returns the total number of awesomes logged by the bot.
+* totalawesomes - Returns the total number of awesomes logged by the bot.
 
-* bestplays
-	Returns the three song plays with the most awesomes logged by the bot.
+* bestplays - Returns the three song plays with the most awesomes logged by the bot.
 
-* bestdjs
-	Returns the three DJs with the most awesomes logged by the bot.
+* bestdjs - Returns the three DJs with the most awesomes logged by the bot.
 
-* worstdjs
-	Returns the three DJs with the most lames logged by the bot.
+* worstdjs - Returns the three DJs with the most lames logged by the bot.
 
-* mostplayed
-	Returns the three most-played songs logged by the bot.
+* mostplayed - Returns the three most-played songs logged by the bot.
 
-* mostawesomed
-	Returns the three most awesomed (cumulative) songs logged by the bot.
+* mostawesomed - Returns the three most awesomed (cumulative) songs logged by the bot.
 
-* mostlamed
-	Returns the three most lamed (cumulative) songs logged by the bot.
+* mostlamed - Returns the three most lamed (cumulative) songs logged by the bot.
 
-* mymostplayed
-	Returns the user's three most played songs.
+* mymostplayed - Returns the user's three most played songs.
 
-* mymostawesomed
-	Returns the user's three most awesomed (cumulative) songs logged by the bot.
+* mymostawesomed - Returns the user's three most awesomed (cumulative) songs logged by the bot.
 
-* mymostlamed
-	Returns the user's three most lamed (cumulative) songs logged by the bot.
+* mymostlamed - Returns the user's three most lamed (cumulative) songs logged by the bot.
 
-* dbsize
-	Returns the number of songs logged in the database and the size of the database.
+* dbsize - Returns the number of songs logged in the database and the size of the database.
 
-* .weather [zip]
-	Returns the current weather conditions at the specified zip code. This call uses the Yahoo! YQL service.
+* .weather [zip] - Returns the current weather conditions at the specified zip code. This call uses the Yahoo! YQL service.
 	Note: This service is rate-limited to 1,000 calls per hour.
 
-* pastnames [name]
-	Returns all names that the given user has gone by.
+* pastnames [name] - Returns all names that the given user has gone by.
 	Note: Currently, this call only registers names used by DJs that have played a song in the room.
 
 ## Admin Commands
@@ -124,24 +96,17 @@ The bot can:
 These commands can only be performed by admins of the bot.
 
 * .a
-* awesome
-	Tells the bot to awesome the current song.
+* awesome - Tells the bot to awesome the current song.
 
 * .l
-* lame
-	Tells the bot to lame the current song.
+* lame - Tells the bot to lame the current song.
 
-* pulldj
-	Pulls a DJ off stage after their song.
+* pulldj - Pulls a DJ off stage after their song.
 
-* pullcurrent
-	Pulls the current DJ off stage during their song.
+* pullcurrent - Pulls the current DJ off stage during their song.
 
-* Meow, step up
-	The bot steps up to DJ.
+* Meow, step up - The bot steps up to DJ.
 
-* Meow, step down
-	The bot steps down from the decks.
+* Meow, step down - The bot steps down from the decks.
 
-* Meow, shut down
-	The bot shuts down, terminating the process.
+* Meow, shut down - The bot shuts down, terminating the process.
