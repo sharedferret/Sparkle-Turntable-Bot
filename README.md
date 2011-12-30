@@ -36,12 +36,12 @@ The bot can:
 
 * .sparklecommands
 
-Displays a list of commands supported by this bot.
+	Displays a list of commands supported by this bot.
 
 * help
 * commands
 
-Displays a list of commands available in the Indie/Classic Alt 1+Done room
+	Displays a list of commands available in the Indie/Classic Alt 1+Done room
 	
 
 * .users
