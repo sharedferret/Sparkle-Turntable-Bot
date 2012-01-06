@@ -76,6 +76,10 @@ var djs = { };
 var usertostep;
 var userstepped = false;
 
+//Used for bonus awesoming
+var bonuspoints = new Array();
+
+//Current song info
 var currentsong = {
 	artist: null,
 	song: null,
@@ -151,6 +155,15 @@ function enforceRoom() {
 	}, 15000);
 }
 
+function getTarget() {
+	if (currentsong.listeners < 10) {
+		return 3;
+	} else if (currentsong.listeners < 20) {
+		return 4;
+	}
+	return 5 + Math.floor((currentsong.listeners - 20) / 20);
+}
+
 //When the bot is ready, this makes it join the primary room (ROOMID)
 //and sets up the database/tables
 //TODO: Actually handle those errors (99% of the time it'll be a "db/table
@@ -175,6 +188,7 @@ bot.on('ready', function (data) {
 		+ ' up INT(3),' + ' down INT(3),'
 		+ ' listeners INT(3),'
 		+ ' started DATETIME)',
+		
 		function (error) {
 			//Handle an error if it's not a table already exists error
 			if(error && error.number != 1050) {
@@ -231,6 +245,13 @@ bot.on('update_votes', function (data) {
 	currentsong.up = data.room.metadata.upvotes;
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
+	
+	//Assign bonus point if room vote > 75% if room populated
+	//if ((currentsong.listeners > 10) && (((currentsong.up * .5)
+	//	+ (currentsong.down * .5) / currentsong.listeners) > 0.75) {
+	//	bot.speak('Bonus!');
+	//	bot.vote('up');
+	//}
 
 	//Log vote in console
 	//Note: Username only displayed for upvotes, since TT doesn't broadcast
@@ -259,7 +280,7 @@ bot.on('registered',   function (data) {
 	if (config.logConsoleEvents) {
 		console.log('Joined room: ' + data.user[0].name);
 	}
-
+	
 	//Add user to usersList
 	var user = data.user[0];
 	usersList[user.userid] = user;
@@ -268,20 +289,15 @@ bot.on('registered',   function (data) {
 	//Displays custom greetings for certain members
 	if(config.welcomeUsers) {
 		if (!user.name.match(/^ttdashboard/)) {
-			switch(user.name) {
-				case 'overlordnyaldee':
-					bot.speak('Meow!');
-					setTimeout(function() {
-						bot.speak('hugs overlordnyaldee');
-					}, 2000);
-					break;
-				case 'sharedferret':
-				case 'ReptarFerret':
-					bot.speak('Hi ferret!');
-					break;
-				default:
-					bot.speak(config.welcomeGreeting + user.name + '!');
-			}
+			client.query('SELECT greeting FROM HOLIDAY_GREETINGS WHERE '
+				+ 'date LIKE CURDATE()',
+				function cbfunc(error, results, fields) {
+					if (results[0] != null) {
+						bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
+					} else {
+						bot.speak(config.welcomeGreeting + user.name + '!');
+					}
+			});
 		}
 	}
 });
@@ -327,7 +343,7 @@ bot.on('speak', function (data) {
 				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
 				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize, '
 				+ 'pastnames [username], .similar, .similarartists, '
-				+ '.weather [zip]');
+				+ '.weather [zip], .find ');
 			break;
 
 		case 'help':
@@ -338,6 +354,47 @@ bot.on('speak', function (data) {
 				+ 'pastnames [username], .similar, .similarartists');
 			break;
 
+		//Bonus points
+		case 'meow':
+		case 'bonus':
+		case 'good dong':
+		case 'awesome':
+		case 'good song':
+		case 'great song':
+		case 'nice pick':
+		case 'good pick':
+		case 'great pick':
+		case 'dance':
+		case '/dance':
+		case 'tromboner':
+			if (bonuspoints.indexOf(data.name) == -1) {
+				bonuspoints.push(data.name);
+
+				//Target number.
+				//3 needed if less than 10 users.
+				//4 needed if less than 20 users.
+				//One additional person needed per 20 after that.
+				var target = getTarget();
+				if(bonuspoints.length >= target) {
+					bot.speak('Bonus!');
+					bot.vote('up');
+				}
+			}
+			break;
+			
+		case 'points':
+			var target = getTarget();
+			bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+			break;
+			
+		case 'bonusdebug':
+			var test = 'voted: ';
+			for (i in bonuspoints) {
+				test += bonuspoints[i] + ', ';
+			}
+			bot.speak(test);
+			break;
+			
 		//--------------------------------------
 		//USER COMMANDS
 		//--------------------------------------
@@ -358,7 +415,9 @@ bot.on('speak', function (data) {
 		//Booted user changed by changing userid in bot.boot()
 		case 'antiquing':
 		case 'antiquing?':
-			bot.speak('boom!');
+			bot.speak('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
+				+ 'bargaining for antiques. Items can be bought for personal use, gifts, and '
+				+ 'in the case of brokers and dealers, profit.');
 			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
 			//bot.boot('4e3b6a804fe7d0578d003859', 'didn\'t awesome tpc'); //boot vic
 			break;
@@ -523,7 +582,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'bestdjs':
-			client.query('SELECT djname as DJ, sum(up) as POINTS from ' + config.SONG_TABLE
+			client.query('SELECT djname as DJ, sum(up) as POINTS from '
+				+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
 				+ ' group by djid order by sum(up) desc limit 3',
 				function select(error, results, fields) {
 					var response = 'The DJs with the most points accrued in this room: ';
@@ -537,7 +597,8 @@ bot.on('speak', function (data) {
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'worstdjs':
-			client.query('SELECT djname as DJ, sum(down) as POINTS from ' + config.SONG_TABLE
+			client.query('SELECT djname as DJ, sum(down) as POINTS from '
+				+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
 				+ ' group by djid order by sum(down) desc limit 3',
 				function select(error, results, fields) {
 					var response = 'The DJs with the most lames accrued in this room: ';
@@ -672,7 +733,6 @@ bot.on('speak', function (data) {
 
 		//Tells bot to awesome the current song
 		case '\.a':
-		case 'awesome':
 			if (admincheck(data.userid)) {
 				bot.vote('up');
 			}
@@ -680,7 +740,6 @@ bot.on('speak', function (data) {
 
 		//Tells bot to lame the current song
 		case '\.l':
-		case 'lame':
 			if (admincheck(data.userid)) {
 				bot.vote('down');
 			}
@@ -790,16 +849,45 @@ bot.on('speak', function (data) {
         	function cbfunc(error, response, body) {
         	        if (!error && response.statusCode == 200) {
         	                var formatted = eval('(' + body + ')');
-        	        	if(formatted.query.results.weather.rss.channel.location != null) {
-				var loc = formatted.query.results.weather.rss.channel.location.city + ', '
-        	                	+ formatted.query.results.weather.rss.channel.location.region;
+        	        	try {
+						var loc = formatted.query.results.weather.rss.channel.location.city + ', '
+        	            if (formatted.query.results.weather.rss.channel.location.region != '') {
+        	            	loc += formatted.query.results.weather.rss.channel.location.region;
+        	            } else {
+        	            	loc += formatted.query.results.weather.rss.channel.location.country;
+        	            }
         	        	var temp = formatted.query.results.weather.rss.channel.item.condition.temp;
         	        	var cond = formatted.query.results.weather.rss.channel.item.condition.text;
         	        	bot.speak('The weather in ' + loc + ' is ' + temp + 'ºF and ' + cond + '.');
-                	} else {
+                	} catch(e) {
 				bot.speak('Sorry, I can\'t find that location.');
 			}}
         });
+	}
+	
+	if(text.match(/^.find/)) {
+		var location = text.split(' ', 2);
+		var thingToFind = text.substring(7 + location[1].length);
+		request('http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20local.search'
+			+'%20where%20zip%3D\'' + encodeURIComponent(location[1]) + '\'%20and%20query%3D\''
+			+ encodeURIComponent(thingToFind) + '\'%20limit%201&format=json',
+			function cbfunc(error, response, body) {
+				if (!error && response.statusCode == 200) {
+					var formatted = eval('(' + body + ')');
+					try {
+						var botresponse = 'Nearest ' + thingToFind + ' location to ' + location[1] + ': ';
+							botresponse += formatted.query.results.Result.Title + ' ('
+								+ formatted.query.results.Result.Rating.AverageRating + ' ☆) '
+								+ formatted.query.results.Result.Address + ', ' 
+								+ formatted.query.results.Result.City + ' ('
+								+ formatted.query.results.Result.Distance + ' miles).  ';
+						
+						bot.speak(botresponse);
+					} catch (e) {
+						bot.speak('Sorry, no locations found.');
+					}
+				}
+		});
 	}
 
 	//Returns a list of names a user has gone by
@@ -818,8 +906,7 @@ bot.on('speak', function (data) {
 					}
 					bot.speak(response.substring(0,response.length-2));
 			});
-	}
-				
+	}		
 
 });
 
@@ -860,7 +947,7 @@ bot.on('newsong', function (data) {
 	currentsong.started = data.room.metadata.current_song.starttime;
 
 	//Check something
-	if (currentsong.artist.match(/skrillex/) || currentsong.song.match(/skrillex/)) {
+	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
 		bot.remDj(currentsong.djid);
 		bot.speak('NO.');
 	}
@@ -886,6 +973,10 @@ bot.on('newsong', function (data) {
 			bot.vote('up');
 		}, randomwait * 1000);
 	}
+	
+	//Reset bonus points
+	bonuspoints = new Array();
+	
 
 	//SAIL!
 	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail') && config.botSing) {
@@ -902,22 +993,22 @@ bot.on('newsong', function (data) {
 	if(currentsong.song == 'Houseboat Babies' && config.botSing) {
 		setTimeout(function() {
 			bot.speak('CAN YOU FEEL IT?')	;
-		}, 84500);
+		}, 86000);
 		setTimeout(function() {
 			bot.speak('YES I CAN FEEL IT');
-		}, 86500);
+		}, 88500);
 		setTimeout(function() {
 			bot.speak('When I\'m at Jenny\'s house');
-		}, 89500);
+		}, 90000);
 		setTimeout(function() {
 			bot.speak('I look for bad ends');
-		}, 93000);
+		}, 93500);
 		setTimeout(function() {
 			bot.speak('Forget your parents!');
-		}, 95200);
+		}, 96000);
 		setTimeout(function() {
 			bot.speak('But it\'s just cat and mouse!');
-		}, 97900);
+		}, 98500);
 	}
 
 	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff') && config.botSing) {
@@ -971,4 +1062,13 @@ bot.on('add_dj', function(data) {
 		console.log('Stepped up: ' + data.user[0].name);
 	}
 	djs[djs.length] = data.user[0].userid;
+});
+
+bot.on('snagged', function(data) {
+	bonuspoints.push(usersList[data.userid].name);
+	var target = getTarget();
+	if(bonuspoints.length >= target) {
+		bot.speak('Bonus!');
+		bot.vote('up');
+	}	
 });
