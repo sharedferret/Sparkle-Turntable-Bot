@@ -1,7 +1,7 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2011.12.30
+ *  Version: [dev] 2012.01.06
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
@@ -39,22 +39,24 @@ try {
 }
 
 //Creates mysql db object
-try {
-	mysql = require('mysql');
-} catch(e) {
-	console.log(e);
-	console.log('It is likely that you do not have the mysql node module installed.'
-		+ '\nUse the command \'npm install mysql\' to install.');
-	process.exit(0);
-}
+if (config.useDatabase) {
+	try {
+		mysql = require('mysql');
+	} catch(e) {
+		console.log(e);
+		console.log('It is likely that you do not have the mysql node module installed.'
+			+ '\nUse the command \'npm install mysql\' to install.');
+		process.exit(0);
+	}
 
-//Connects to mysql server
-try {
-	client = mysql.createClient(config.DBLOGIN);
-} catch(e) {
-	console.log(e);
-	console.log('Make sure that a mysql server instance is running and that the '
-		+ 'username and password information in config.js are correct.');
+	//Connects to mysql server
+	try {
+		client = mysql.createClient(config.DBLOGIN);
+	} catch(e) {
+		console.log(e);
+		console.log('Make sure that a mysql server instance is running and that the '
+			+ 'username and password information in config.js are correct.');
+	}
 }
 
 //Initializes request module
@@ -69,6 +71,7 @@ try {
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.AUTH, config.USERID);
+bot.tcpListen(8180, '127.0.0.1');
 var usersList = { };
 
 //Used for room enforcement
@@ -155,6 +158,7 @@ function enforceRoom() {
 	}, 15000);
 }
 
+//Calculates the target number of votes needed for bot to awesome
 function getTarget() {
 	if (currentsong.listeners < 10) {
 		return 3;
@@ -164,51 +168,76 @@ function getTarget() {
 	return 5 + Math.floor((currentsong.listeners - 20) / 20);
 }
 
+bot.on('tcpConnect', function (socket) {
+
+});
+
+bot.on('tcpMessage', function (socket, msg) {
+	switch (msg) {
+		case 'online':
+			socket.write('>> ' + currentsong.listeners + '\n');
+			break;
+		case 'exit':
+			socket.end();
+			break;
+		case 'shutdown':
+			socket.end();
+			bot.roomDeregister();
+			process.exit(0);
+			break;
+		default:
+			socket.write('>> ' + msg + ' is not a valid command.\n');
+		}
+});
+
+
 //When the bot is ready, this makes it join the primary room (ROOMID)
 //and sets up the database/tables
 //TODO: Actually handle those errors (99% of the time it'll be a "db/table
 //	already exists" error which is why I didn't handle them immediately)
 bot.on('ready', function (data) {
-	//Creates DB and tables if needed, connects to db
-	client.query('CREATE DATABASE ' + config.DATABASE,
-		function(error) {
-			if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
-				throw (error);
-			}
+	if (config.useDatabase) {
+		//Creates DB and tables if needed, connects to db
+		client.query('CREATE DATABASE ' + config.DATABASE,
+			function(error) {
+				if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
+					throw (error);
+				}
 		});
-	client.query('USE '+ config.DATABASE);
+		client.query('USE '+ config.DATABASE);
 
-	//song table
-	client.query('CREATE TABLE ' + config.SONG_TABLE
-		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
-		+ ' artist VARCHAR(255),'
-		+ ' song VARCHAR(255),'
-		+ ' djname VARCHAR(255),'
-		+ ' djid VARCHAR(255),'
-		+ ' up INT(3),' + ' down INT(3),'
-		+ ' listeners INT(3),'
-		+ ' started DATETIME)',
-		
-		function (error) {
-			//Handle an error if it's not a table already exists error
-			if(error && error.number != 1050) {
-				throw (error);
-			}
+		//song table
+		client.query('CREATE TABLE ' + config.SONG_TABLE
+			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+			+ ' artist VARCHAR(255),'
+			+ ' song VARCHAR(255),'
+			+ ' djname VARCHAR(255),'
+			+ ' djid VARCHAR(255),'
+			+ ' up INT(3),' + ' down INT(3),'
+			+ ' listeners INT(3),'
+			+ ' started DATETIME)',
+			
+			function (error) {
+				//Handle an error if it's not a table already exists error
+				if(error && error.number != 1050) {
+					throw (error);
+				}
 		});
 
-	//chat table
-	client.query('CREATE TABLE ' + config.CHAT_TABLE
-		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
-		+ ' user VARCHAR(255),'
-		+ ' userid VARCHAR(255),'
-		+ ' chat VARCHAR(255),'
-		+ ' time DATETIME)',
-		function (error) {
-			//Handle an error if it's not a table already exists error
-			if(error && error.number != 1050) {
-				throw (error);
-			}
+		//chat table
+		client.query('CREATE TABLE ' + config.CHAT_TABLE
+			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+			+ ' user VARCHAR(255),'
+			+ ' userid VARCHAR(255),'
+			+ ' chat VARCHAR(255),'
+			+ ' time DATETIME)',
+			function (error) {
+				//Handle an error if it's not a table already exists error
+				if(error && error.number != 1050) {
+					throw (error);
+				}
 		});
+	}
 			
 	bot.roomRegister(config.ROOMID);
 });
@@ -245,13 +274,6 @@ bot.on('update_votes', function (data) {
 	currentsong.up = data.room.metadata.upvotes;
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
-	
-	//Assign bonus point if room vote > 75% if room populated
-	//if ((currentsong.listeners > 10) && (((currentsong.up * .5)
-	//	+ (currentsong.down * .5) / currentsong.listeners) > 0.75) {
-	//	bot.speak('Bonus!');
-	//	bot.vote('up');
-	//}
 
 	//Log vote in console
 	//Note: Username only displayed for upvotes, since TT doesn't broadcast
@@ -289,15 +311,19 @@ bot.on('registered',   function (data) {
 	//Displays custom greetings for certain members
 	if(config.welcomeUsers) {
 		if (!user.name.match(/^ttdashboard/)) {
-			client.query('SELECT greeting FROM HOLIDAY_GREETINGS WHERE '
-				+ 'date LIKE CURDATE()',
-				function cbfunc(error, results, fields) {
-					if (results[0] != null) {
-						bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
-					} else {
-						bot.speak(config.welcomeGreeting + user.name + '!');
-					}
-			});
+			if (config.useDatabase) {
+				client.query('SELECT greeting FROM HOLIDAY_GREETINGS WHERE '
+					+ 'date LIKE CURDATE()',
+					function cbfunc(error, results, fields) {
+						if (results[0] != null) {
+							bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
+						} else {
+							bot.speak(config.welcomeGreeting + user.name + '!');
+						}
+				});
+			} else {
+				bot.speak(config.welcomeGreeting + user.name + '!');
+			}
 		}
 	}
 });
@@ -328,9 +354,11 @@ bot.on('speak', function (data) {
 	}
 
 	//Log in db (chatlog table)
-	client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
-		+ 'SET user = ?, userid = ?, chat = ?, time = ?',
-		[data.name, data.userid, data.text, new Date()]);
+	if (config.useDatabase) {
+		client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
+			+ 'SET user = ?, userid = ?, chat = ?, time = ?',
+			[data.name, data.userid, data.text, new Date()]);
+	}
 
 	//If it's a supported command, handle it	
 	switch(text) {
@@ -558,164 +586,186 @@ bot.on('speak', function (data) {
 
 		//Returns the total number of awesomes logged in the songlist table
 		case 'totalawesomes':
-			client.query('SELECT SUM(UP) AS SUM FROM '
-				+ config.SONG_TABLE,
-				function selectCb(error, results, fields) {
-					var awesomes = results[0]['SUM'];
-					bot.speak('Total awesomes in this room: ' + awesomes);					
-				});
+			if (config.useDatabase) {
+				client.query('SELECT SUM(UP) AS SUM FROM '
+					+ config.SONG_TABLE,
+					function selectCb(error, results, fields) {
+						var awesomes = results[0]['SUM'];
+						bot.speak('Total awesomes in this room: ' + awesomes);					
+					});
+			}
 			break;
 
 		//Returns the three song plays with the most awesomes in the songlist table
 		case 'bestplays':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, UP FROM '
-				+ config.SONG_TABLE + ' ORDER BY UP DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The song plays I\'ve heard with the most awesomes: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['UP'] + ' awesomes.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, UP FROM '
+					+ config.SONG_TABLE + ' ORDER BY UP DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The song plays I\'ve heard with the most awesomes: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['UP'] + ' awesomes.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'bestdjs':
-			client.query('SELECT djname as DJ, sum(up) as POINTS from '
-				+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
-				+ ' group by djid order by sum(up) desc limit 3',
-				function select(error, results, fields) {
-					var response = 'The DJs with the most points accrued in this room: ';
-					for (i in results) {
-						response += results[i]['DJ'] + ': '
-							+ results[i]['POINTS'] + ' points.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT djname as DJ, sum(up) as POINTS from '
+					+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
+					+ ' group by djid order by sum(up) desc limit 3',
+					function select(error, results, fields) {
+						var response = 'The DJs with the most points accrued in this room: ';
+						for (i in results) {
+							response += results[i]['DJ'] + ': '
+								+ results[i]['POINTS'] + ' points.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'worstdjs':
-			client.query('SELECT djname as DJ, sum(down) as POINTS from '
-				+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
-				+ ' group by djid order by sum(down) desc limit 3',
-				function select(error, results, fields) {
-					var response = 'The DJs with the most lames accrued in this room: ';
-					for (i in results) {
-						response += results[i]['DJ'] + ': '
-							+ results[i]['POINTS'] + ' lames.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT djname as DJ, sum(down) as POINTS from '
+					+ '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
+					+ ' group by djid order by sum(down) desc limit 3',
+					function select(error, results, fields) {
+						var response = 'The DJs with the most lames accrued in this room: ';
+						for (i in results) {
+							response += results[i]['DJ'] + ': '
+								+ results[i]['POINTS'] + ' lames.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the three most-played songs in the songlist table
 		case 'mostplayed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) '
-				+ 'DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The songs I\'ve heard the most: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['COUNT'] + ' plays.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
+					+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) '
+					+ 'DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The songs I\'ve heard the most: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['COUNT'] + ' plays.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the three most-awesomed songs in the songlist table
 		case 'mostawesomed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
-				+ 'DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The most awesomed songs I\'ve heard: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['SUM'] + ' awesomes.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
+					+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
+					+ 'DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The most awesomed songs I\'ve heard: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['SUM'] + ' awesomes.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the three most-lamed songs in the songlist table
 		case 'mostlamed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
-				+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
-				+ 'DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The most lamed songs I\'ve heard: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['SUM'] + ' lames.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
+					+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM '
+					+ 'DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The most lamed songs I\'ve heard: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['SUM'] + ' lames.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 			
 		//Returns the user's three most played songs
 		case 'mymostplayed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
-				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
-				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The songs I\'ve heard the most from you: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['COUNT'] + ' plays.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, COUNT(*) AS COUNT FROM '
+					+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
+					+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY COUNT(*) DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The songs I\'ve heard the most from you: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['COUNT'] + ' plays.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the user's three most-awesomed songs (aggregate)
 		case 'mymostawesomed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
-				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
-				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The most appreciated songs I\'ve heard from you: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['SUM'] + ' awesomes.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(up) AS SUM FROM '
+					+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
+					+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The most appreciated songs I\'ve heard from you: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['SUM'] + ' awesomes.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//Returns the user's three most-lamed songs (aggregate)
 		case 'mymostlamed':
-			client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
-				+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
-				+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
-				function select(error, results, fields) {
-					var response = 'The most hated songs I\'ve heard from you: ';
-					for (i in results) {
-						response += results[i]['TRACK'] + ': '
-							+ results[i]['SUM'] + ' lames.  ';
-					}
-					bot.speak(response);
-			});
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, SUM(down) AS SUM FROM '
+					+ config.SONG_TABLE + ' WHERE (djid = \''+ data.userid +'\')'
+					+ ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SUM DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The most hated songs I\'ve heard from you: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['SUM'] + ' lames.  ';
+						}
+						bot.speak(response);
+				});
+			}
 			break;
 
 		//For debugging/monitoring of db
 		//Returns the number of songs logged and the size of the database in MB.
 		case 'dbsize':
-			//var response = 'Songs logged';
-			client.query('SELECT COUNT(STARTED) AS COUNT FROM ' + config.SONG_TABLE,
-				function selectCb(error, results, fields) {
-					bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
-			});
-			setTimeout(function() {
-				client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
-					+ ' FROM information_schema.TABLES'
-					+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
+			if (config.useDatabase) {
+				//var response = 'Songs logged';
+				client.query('SELECT COUNT(STARTED) AS COUNT FROM ' + config.SONG_TABLE,
 					function selectCb(error, results, fields) {
-						bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
+						bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
 				});
-			}, 500);
+				setTimeout(function() {
+					client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
+						+ ' FROM information_schema.TABLES'
+						+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
+						function selectCb(error, results, fields) {
+							bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
+					});
+				}, 500);
+			}
 			break;
 
 		//Bot freakout
@@ -893,19 +943,20 @@ bot.on('speak', function (data) {
 	//Returns a list of names a user has gone by
 	//Usage: 'pastnames [username]'
 	if (text.match(/^pastnames/)) {
-		//bot.speak('DEBUG: I\'m searching for '+text.substring(9));
-		client.query('SELECT djname FROM ' + config.SONG_TABLE
-			+ ' WHERE (djid LIKE (SELECT djid FROM '
-			+ config.SONG_TABLE + ' WHERE (djname like ?)'
-			+ ' ORDER BY id DESC LIMIT 1)) GROUP BY djname',
-			[text.substring(10)],
-			function select(error, results, fields) {
-					var response = 'Names I\'ve seen that user go by: ';
-					for (i in results) {
-						response += results[i]['djname'] + ', ';
-					}
-					bot.speak(response.substring(0,response.length-2));
+		if (config.useDatabase) {
+			client.query('SELECT djname FROM ' + config.SONG_TABLE
+				+ ' WHERE (djid LIKE (SELECT djid FROM '
+				+ config.SONG_TABLE + ' WHERE (djname like ?)'
+				+ ' ORDER BY id DESC LIMIT 1)) GROUP BY djname',
+				[text.substring(10)],
+				function select(error, results, fields) {
+						var response = 'Names I\'ve seen that user go by: ';
+						for (i in results) {
+							response += results[i]['djname'] + ', ';
+						}
+						bot.speak(response.substring(0,response.length-2));
 			});
+		}
 	}		
 
 });
@@ -919,7 +970,9 @@ bot.on('nosong', function (data) {
 //Logs song in database, reports song stats in chat
 bot.on('endsong', function (data) {
 	//Log song in DB
-	addToDb();
+	if (config.useDatabase) {
+		addToDb();
+	}
 
 	//Used for room enforcement
 	userstepped = false;

@@ -20,6 +20,7 @@ exports.ROOMID = '4e9d6e14a3f75112a202cb1d'; //Indie/Classic Alternative 1 + Dow
 exports.IASROOMID = '4e08878c14169c0199001082'; //indie and such.
 
 //Database setup
+exports.useDatabase   = true;
 exports.DATABASE      = 'nodejs_mysql_sparkle';
 exports.SONG_TABLE    = 'SONGLIST';
 exports.CHAT_TABLE    = 'CHATLOG';
