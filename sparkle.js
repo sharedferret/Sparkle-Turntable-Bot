@@ -416,9 +416,6 @@ bot.on('speak', function (data) {
 
 		//Bonus points
 		case 'tromboner':
-			if (data.userid == '4e1c82d24fe7d0313f0be9a7') {
-				bot.boot('4e1c82d24fe7d0313f0be9a7', 'YOU JUST GOT BONED!');
-			}
 		case 'meow':
 		case 'bonus':
 		case '/bonus':
