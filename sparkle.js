@@ -90,7 +90,8 @@ var currentsong = {
 	djid: null,
 	up: 0,
 	down: 0,
-	listeners: 0};
+	listeners: 0,
+	snags: 0};
 
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
@@ -132,15 +133,16 @@ function addToDb(data) {
 	client.query(
 		'INSERT INTO '+ config.SONG_TABLE +' '
 		+ 'SET artist = ?,song = ?, djname = ?, djid = ?, up = ?, down = ?,'
-		+ 'listeners = ?, started = ?',
+		+ 'listeners = ?, started = NOW(), snags = ?, bonus = ?',
 		[currentsong.artist, 
 		currentsong.song, 
 		currentsong.djname, 
 		currentsong.djid, 
 		currentsong.up, 
 		currentsong.down, 
-		currentsong.listeners, 
-		new Date()]);
+		currentsong.listeners,
+		currentsong.snags,
+		bonuspoints.length]);
 }
 
 //Reminds a user that has just played a song to step down, and pulls them
@@ -166,27 +168,55 @@ function getTarget() {
 		return 4;
 	}
 	return 5 + Math.floor((currentsong.listeners - 20) / 20);
-}
+}	
 
 bot.on('tcpConnect', function (socket) {
-
+	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
 });
 
 bot.on('tcpMessage', function (socket, msg) {
+	if (msg.match(/^speak/)) {
+		bot.speak(msg.substring(6));
+		socket.write('>> Message sent\n');
+	}
+	
+	if (msg.match(/^boot/)) {
+		bot.boot(msg.substring(5));
+	}
+	
 	switch (msg) {
+		case 'help':
+			socket.write('>> xxMEOWxx responds to the following commands in the console: '
+				+ 'online, .a, .l, step up, speak [text], exit, shutdown\n');
+			break;
 		case 'online':
 			socket.write('>> ' + currentsong.listeners + '\n');
 			break;
+		case '.a':
+			bot.vote('up');
+			socket.write('>> Awesomed\n');
+			break;
+		case '.l':
+			bot.vote('down');
+			socket.write('>> Lamed\n');
+			break;
+		case 'step up':
+			bot.addDj();
+			break;
+		case 'pulldj':
+			bot.remDj(usertostep);
+			break;
 		case 'exit':
+			socket.write('>> Goodbye!\n');
 			socket.end();
 			break;
 		case 'shutdown':
+			socket.write('>> Shutting down...\n');
+			bot.speak('Shutting down...');
 			socket.end();
 			bot.roomDeregister();
 			process.exit(0);
 			break;
-		default:
-			socket.write('>> ' + msg + ' is not a valid command.\n');
 		}
 });
 
@@ -215,7 +245,9 @@ bot.on('ready', function (data) {
 			+ ' djid VARCHAR(255),'
 			+ ' up INT(3),' + ' down INT(3),'
 			+ ' listeners INT(3),'
-			+ ' started DATETIME)',
+			+ ' started DATETIME,'
+			+ ' snags INT(3),'
+			+ ' bonus INT(3))',
 			
 			function (error) {
 				//Handle an error if it's not a table already exists error
@@ -356,8 +388,8 @@ bot.on('speak', function (data) {
 	//Log in db (chatlog table)
 	if (config.useDatabase) {
 		client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
-			+ 'SET user = ?, userid = ?, chat = ?, time = ?',
-			[data.name, data.userid, data.text, new Date()]);
+			+ 'SET user = ?, userid = ?, chat = ?, time = NOW()',
+			[data.name, data.userid, data.text]);
 	}
 
 	//If it's a supported command, handle it	
@@ -369,9 +401,9 @@ bot.on('speak', function (data) {
 		case '.sparklecommands':
 			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
 				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
-				+ 'mymostawesomed, mymostlamed, totalawesomes, dbsize, '
+				+ 'mymostawesomed, mymostlamed, totalawesomes, mostsnagged, '
 				+ 'pastnames [username], .similar, .similarartists, '
-				+ '.weather [zip], .find ');
+				+ '.weather [zip], .find [zip] [thing]');
 			break;
 
 		case 'help':
@@ -383,8 +415,13 @@ bot.on('speak', function (data) {
 			break;
 
 		//Bonus points
+		case 'tromboner':
+			if (data.userid == '4e1c82d24fe7d0313f0be9a7') {
+				bot.boot('4e1c82d24fe7d0313f0be9a7', 'YOU JUST GOT BONED!');
+			}
 		case 'meow':
 		case 'bonus':
+		case '/bonus':
 		case 'good dong':
 		case 'awesome':
 		case 'good song':
@@ -394,14 +431,8 @@ bot.on('speak', function (data) {
 		case 'great pick':
 		case 'dance':
 		case '/dance':
-		case 'tromboner':
 			if (bonuspoints.indexOf(data.name) == -1) {
 				bonuspoints.push(data.name);
-
-				//Target number.
-				//3 needed if less than 10 users.
-				//4 needed if less than 20 users.
-				//One additional person needed per 20 after that.
 				var target = getTarget();
 				if(bonuspoints.length >= target) {
 					bot.speak('Bonus!');
@@ -611,6 +642,23 @@ bot.on('speak', function (data) {
 				});
 			}
 			break;
+			
+		//Returns the three DJs with the most points in the last 24 hours
+		case 'past24hours':
+			if (config.useDatabase) {
+				client.query('SELECT djname, sum(up) AS upvotes FROM ' + config.SONG_TABLE
+					+ ' WHERE started > DATE_SUB(NOW(), INTERVAL 1 DAY) GROUP BY djid '
+					+ 'ORDER BY sum(up) DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'DJs with the most points in the last 24 hours: ';
+						for (i in results) {
+							response += results[i]['djname'] + ': '
+								+ results[i]['upvotes'] + ' awesomes.  ';
+						}
+						bot.speak(response);
+				});
+			}
+			break;
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'bestdjs':
@@ -657,6 +705,23 @@ bot.on('speak', function (data) {
 						for (i in results) {
 							response += results[i]['TRACK'] + ': '
 								+ results[i]['COUNT'] + ' plays.  ';
+						}
+						bot.speak(response);
+				});
+			}
+			break;
+			
+			//Returns the three most-played songs in the songlist table
+		case 'mostsnagged':
+			if (config.useDatabase) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, snags AS SNAGS FROM '
+					+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SNAGS '
+					+ 'DESC LIMIT 3',
+					function select(error, results, fields) {
+						var response = 'The songs I\'ve seen snagged the most: ';
+						for (i in results) {
+							response += results[i]['TRACK'] + ': '
+								+ results[i]['SNAGS'] + ' snags.  ';
 						}
 						bot.speak(response);
 				});
@@ -878,6 +943,7 @@ bot.on('speak', function (data) {
 		//Disconnects from room, exits process.
 		case 'Meow, shut down':
 			if (data.userid == config.MAINADMIN) {
+				bot.speak('Shutting down...');
 				bot.roomDeregister();
 				process.exit(0);
 			}
@@ -1118,6 +1184,7 @@ bot.on('add_dj', function(data) {
 });
 
 bot.on('snagged', function(data) {
+	currentsong.snags++;
 	bonuspoints.push(usersList[data.userid].name);
 	var target = getTarget();
 	if(bonuspoints.length >= target) {
