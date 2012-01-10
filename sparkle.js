@@ -393,7 +393,7 @@ bot.on('speak', function (data) {
 	}
 
 	//If it's a supported command, handle it	
-	switch(text) {
+	switch(text.toLowerCase()) {
 		//--------------------------------------
 		//COMMAND LISTS
 		//--------------------------------------
@@ -711,10 +711,9 @@ bot.on('speak', function (data) {
 			//Returns the three most-played songs in the songlist table
 		case 'mostsnagged':
 			if (config.useDatabase) {
-				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, snags AS SNAGS FROM '
-					+ config.SONG_TABLE + ' GROUP BY CONCAT(song,\' by \',artist) ORDER BY SNAGS '
-					+ 'DESC LIMIT 3',
-					function select(error, results, fields) {
+				client.query('SELECT CONCAT(song,\' by \',artist) AS TRACK, sum(snags) AS SNAGS FROM '
+					+ config.SONG_TABLE + ' GROUP BY CONCAT(song, \' by \', artist) ORDER BY SNAGS '
+					+ 'DESC LIMIT 3', function select(error, results, fields) {
 						var response = 'The songs I\'ve seen snagged the most: ';
 						for (i in results) {
 							response += results[i]['TRACK'] + ': '
@@ -1061,6 +1060,7 @@ bot.on('newsong', function (data) {
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
 	currentsong.started = data.room.metadata.current_song.starttime;
+	currentsong.snags = 0;
 
 	//Check something
 	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
