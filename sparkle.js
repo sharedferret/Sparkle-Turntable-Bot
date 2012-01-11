@@ -399,8 +399,8 @@ bot.on('speak', function (data) {
 		//--------------------------------------
 	
 		case '.sparklecommands':
-			bot.speak('commands: .users, .owner, .source, rules, ping, reptar, '
-				+ 'mostplayed, mostawesomed, mostlamed, mymostplayed, '
+			bot.speak('commands: .users, .owner, .source, mystats, bonus, points, rules, ping, '
+				+ 'platforms, reptar, mostplayed, mostawesomed, mostlamed, mymostplayed, '
 				+ 'mymostawesomed, mymostlamed, totalawesomes, mostsnagged, '
 				+ 'pastnames [username], .similar, .similarartists, '
 				+ '.weather [zip], .find [zip] [thing]');
@@ -408,8 +408,8 @@ bot.on('speak', function (data) {
 
 		case 'help':
 		case 'commands':
-			bot.speak('commands: .ad, ping, reptar, merica, .random, .facebook, '
-				+ '.twitter, .rules, .users, .owner, .source, mostplayed, '
+			bot.speak('commands: .ad, bonus, points, ping, reptar, merica, .random, platforms, '
+				+ '.twitter, .rules, .users, .owner, .source, mystats, mostplayed, '
 				+ 'mostawesomed, mymostplayed, mymostawesomed, '
 				+ 'pastnames [username], .similar, .similarartists');
 			break;
@@ -542,6 +542,24 @@ bot.on('speak', function (data) {
 			setTimeout(function() {
 				bot.speak('hugs ' + data.name);
 			}, timetowait);
+			break;
+			
+		case 'platforms':
+			var platforms = {
+				pc: 0,
+				mac: 0,
+				linux: 0,
+				chrome: 0,
+				iphone: 0};
+			for (i in usersList) {
+				platforms[usersList[i].laptop]++;
+			}
+			bot.speak('Platforms in this room: '
+			    + 'PC: ' + platforms.pc
+				+ '.  Mac: ' + platforms.mac
+				+ '.  Linux: ' + platforms.linux
+				+ '.  Chrome: ' + platforms.chrome
+				+ '.  iPhone: ' + platforms.iphone + '.');
 			break;
 			
 		//--------------------------------------
@@ -754,6 +772,24 @@ bot.on('speak', function (data) {
 								+ results[i]['SUM'] + ' lames.  ';
 						}
 						bot.speak(response);
+				});
+			}
+			break;
+			
+		//Returns the user's play count, total awesomes/lames, and average awesomes/lames
+		//in the room
+		case 'mystats':
+			if (config.useDatabase) {
+				client.query('SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
+					+ 'sum(down) as down, avg(down) as avgdown '
+					+ 'FROM '+ config.SONG_TABLE + ' WHERE `djid` LIKE \'' + data.userid + '\'',
+					function select(error, results, fields) {
+						bot.speak(data.name + ', you have played '
+							+ results[0]['total'] + ' songs in this room with a total of '
+							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
+							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
+							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
+							+ ').');
 				});
 			}
 			break;
