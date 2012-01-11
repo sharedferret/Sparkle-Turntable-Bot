@@ -479,13 +479,13 @@ bot.on('speak', function (data) {
 			break;
 
 		//Responds to reptar-related call
-		case 'CAN YOU FEEL IT!?':
+		case 'can you feel it!?':
 			setTimeout(function() {
 				bot.speak('YES I CAN FEEL IT!');
 			}, 1200);
 			break;
 			
-		case 'I enjoy that band.':
+		case 'i enjoy that band.':
 			setTimeout(function() {
 				bot.speak('Me too!');
 			}, 1200);
@@ -529,7 +529,7 @@ bot.on('speak', function (data) {
 
 		//hugs support.
 		//Change xxMEOWxx, meow etc to bot name
-		case 'hugs xxMEOWxx':
+		case 'hugs xxmeowxx':
 		case 'hugs meow':
 			var rand = Math.random();
 			var timetowait = 1600;
@@ -886,13 +886,13 @@ bot.on('speak', function (data) {
 			break;
 
 		//Changes room
-		case 'Meow, go to IAS':
+		case 'Meow, go to ias':
 			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
 				bot.roomRegister(config.IASROOMID);
 			}
 			break;
-		case 'Meow, go to Reptar Room':
+		case 'Meow, go to reptar room':
 			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
 				bot.roomRegister(config.ROOMID);
@@ -900,21 +900,21 @@ bot.on('speak', function (data) {
 			break;
 
 		//Step up to DJ
-		case 'Meow, step up':
+		case 'meow, step up':
 			if (admincheck(data.userid)) {
 				bot.addDj();
 			}
 			break;
 
 		//Step down if DJing
-		case 'Meow, step down':
+		case 'meow, step down':
 			if (admincheck(data.userid)) {
 				bot.remDj(config.USERID);
 			}
 			break;
 
 		//Bot freakout
-		case 'OH MY GOD MEOW':
+		case 'oh my god meow':
 			if (admincheck(data.userid)) {
 				reptarCall();
 				setTimeout(function() {
@@ -937,7 +937,7 @@ bot.on('speak', function (data) {
 
 		//Shuts down bot (only the main admin can run this)
 		//Disconnects from room, exits process.
-		case 'Meow, shut down':
+		case 'meow, shut down':
 			if (data.userid == config.MAINADMIN) {
 				bot.speak('Shutting down...');
 				bot.roomDeregister();
