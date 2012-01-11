@@ -630,15 +630,33 @@ bot.on('speak', function (data) {
 		//USER DATABASE COMMANDS
 		//--------------------------------------
 
-		//Returns the total number of awesomes logged in the songlist table
-		case 'totalawesomes':
+		//Returns the user's play count, total awesomes/lames, and average awesomes/lames
+		//in the room
+		case 'stats':
 			if (config.useDatabase) {
-				client.query('SELECT SUM(UP) AS SUM FROM '
-					+ config.SONG_TABLE,
-					function selectCb(error, results, fields) {
-						var awesomes = results[0]['SUM'];
-						bot.speak('Total awesomes in this room: ' + awesomes);					
-					});
+				/**client.query('SELECT total, djs, up, avgup, down, avgdown FROM '
+					+ '(SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
+					+ 'sum(down) as down, avg(down) as avgdown FROM ' + config.SONG_TABLE + 
+					+ ') as stattable, (SELECT count(*) as djs FROM (SELECT count(*) from '
+					+ config.SONG_TABLE + ' group by djid) as innertable) as djcount',
+					function select(error, results, fields) {
+						bot.speak('In this room, '
+							+ results[0]['total'] + ' songs have been played from '
+							+ results[0]['djs'] + ' users with a total of '
+							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
+							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
+							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
+							+ ').');*/
+				client.query('SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
+					+ 'sum(down) as down, avg(down) as avgdown FROM ' + config.SONG_TABLE,
+					function select(error, results, fields) {
+						bot.speak('In this room, '
+							+ results[0]['total'] + ' songs have been played with a total of '
+							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
+							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
+							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
+							+ ').');
+				});
 			}
 			break;
 
