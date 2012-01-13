@@ -16,7 +16,7 @@ To run the bot, you'll need the following installed:
 
 ## Run
 
-Before running, make sure the config.js file is filled out with your bot account's userid, auth code, the target room id, as well as the admin id info (the admins array can be scaled up or down depending on the number of admins you want to have full control of the bot). Additionally, ensure that a mysql server instance is running on your machine.
+Before running, make sure the config.js file is filled out with your bot account's userid, auth code, the target room id, as well as the admin id info (the admins array can be scaled up or down depending on the number of admins you want to have full control of the bot). Additionally, ensure that a mysql server instance is running on your machine, or that the exports.useDatabase value in config.js is set to FALSE.
 
 	node sparkle.js
 
