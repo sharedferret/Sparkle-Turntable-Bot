@@ -1,16 +1,17 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2012.01.06
+ *  Version: [dev] 2012.01.12
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
- *  Uses node.js with modules ttapi, node_mysql, request
+ *  Uses node.js with node modules ttapi, mysql, request
  * 
  *  Run: 'node sparkle.js'
  *  
  *  Make sure parameters in config.js are set before running.
- *  Make sure a mysql server instance is running before starting the bot.
+ *  Make sure a mysql server instance is running before starting the bot (if useDatabase
+ *  is enabled in the config file)
  *
 */
 var Bot;
@@ -71,16 +72,19 @@ try {
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.AUTH, config.USERID);
-bot.tcpListen(8180, '127.0.0.1');
-var usersList = { };
+if (config.useTCP) {
+	bot.tcpListen(config.tcpPort, config.tcpHost);
+}
 
-//Used for room enforcement
+//Room information
+var usersList = { };
 var djs = { };
 var usertostep;
 var userstepped = false;
 
 //Used for bonus awesoming
 var bonuspoints = new Array();
+var bonusvote = false;
 
 //Current song info
 var currentsong = {
@@ -112,7 +116,7 @@ function reptarCall() {
 		bot.speak('That band is pretty awesome.');
 	} else if (rand < 0.10) {
 		bot.speak('Good morning!');
-	} else if (rand < 0.18) {
+	} else if (rand < 0.17) {
 		bot.speak('Rawr!');
 	} else if (rand < 0.3) {
 		bot.speak('rawr!');
@@ -162,32 +166,38 @@ function enforceRoom() {
 
 //Calculates the target number of votes needed for bot to awesome
 function getTarget() {
-	if (currentsong.listeners < 10) {
+	if (currentsong.listeners < 11) {
 		return 3;
-	} else if (currentsong.listeners < 20) {
+	} else if (currentsong.listeners < 21) {
 		return 4;
 	}
 	return 5 + Math.floor((currentsong.listeners - 20) / 20);
 }	
 
+//Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
 	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
 });
 
+//TCP message handling
 bot.on('tcpMessage', function (socket, msg) {
+	//Have the bot speak in chat
 	if (msg.match(/^speak/)) {
 		bot.speak(msg.substring(6));
 		socket.write('>> Message sent\n');
 	}
 	
+	//Boot the given userid
+	//TODO: Change userid to user name
 	if (msg.match(/^boot/)) {
 		bot.boot(msg.substring(5));
 	}
 	
+	//Handle commands
 	switch (msg) {
 		case 'help':
 			socket.write('>> xxMEOWxx responds to the following commands in the console: '
-				+ 'online, .a, .l, step up, speak [text], exit, shutdown\n');
+				+ 'online, .a, .l, step up, step down, speak [text], exit, shutdown\n');
 			break;
 		case 'online':
 			socket.write('>> ' + currentsong.listeners + '\n');
@@ -202,9 +212,15 @@ bot.on('tcpMessage', function (socket, msg) {
 			break;
 		case 'step up':
 			bot.addDj();
+			socket.write('>> Stepped up\n');
+			break;
+		case 'step down:
+			bot.remDj(config.USERID);
+			socket.write('>> Stepped down\n');
 			break;
 		case 'pulldj':
 			bot.remDj(usertostep);
+			socket.write('>> DJ removed\n');
 			break;
 		case 'exit':
 			socket.write('>> Goodbye!\n');
@@ -297,6 +313,9 @@ bot.on('roomChanged', function(data) {
 		var user = users[i];
 		usersList[user.userid] = user;
 	}
+	
+	//Set bot's laptop type
+	bot.modifyLaptop(config.LAPTOP);
 });
 
 //Runs when a user updates their vote
@@ -415,6 +434,7 @@ bot.on('speak', function (data) {
 			break;
 
 		//Bonus points
+		//If enough bonus points are cast for a song, the bot will awesome.
 		case 'tromboner':
 		case 'meow':
 		case 'bonus':
@@ -428,27 +448,24 @@ bot.on('speak', function (data) {
 		case 'great pick':
 		case 'dance':
 		case '/dance':
+			//If the user has not cast a bonus point, add to bonuspoints array
 			if (bonuspoints.indexOf(data.name) == -1) {
 				bonuspoints.push(data.name);
 				var target = getTarget();
-				if(bonuspoints.length >= target) {
+				//If the target has been met, the bot will awesome
+				if((bonuspoints.length >= target) && !bonusvote) {
 					bot.speak('Bonus!');
 					bot.vote('up');
+					bot.snag();
+					bonusvote = true;
 				}
 			}
 			break;
 			
+		//Checks the number of points cast for a song, as well as the number needed
 		case 'points':
 			var target = getTarget();
 			bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
-			break;
-			
-		case 'bonusdebug':
-			var test = 'voted: ';
-			for (i in bonuspoints) {
-				test += bonuspoints[i] + ', ';
-			}
-			bot.speak(test);
 			break;
 			
 		//--------------------------------------
@@ -467,15 +484,11 @@ bot.on('speak', function (data) {
 				+ output.substring(0,output.length - 2));
 			break;
 
-		//Boots user 'thisiskirby'
-		//Booted user changed by changing userid in bot.boot()
 		case 'antiquing':
 		case 'antiquing?':
 			bot.speak('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
 				+ 'bargaining for antiques. Items can be bought for personal use, gifts, and '
 				+ 'in the case of brokers and dealers, profit.');
-			//bot.boot('4e1c82d24fe7d0313f0be9a7'); //boot kirby
-			//bot.boot('4e3b6a804fe7d0578d003859', 'didn\'t awesome tpc'); //boot vic
 			break;
 
 		//Responds to reptar-related call
@@ -543,7 +556,8 @@ bot.on('speak', function (data) {
 				bot.speak('hugs ' + data.name);
 			}, timetowait);
 			break;
-			
+		
+		//Returns the number of each type of laptop present in the room
 		case 'platforms':
 			var platforms = {
 				pc: 0,
@@ -579,12 +593,7 @@ bot.on('speak', function (data) {
                         	var formatted = eval('(' + body + ')');
 							var botstring = 'Similar songs to ' + currentsong.song + ': ';
 							try {
-								//for (i in formatted.similartracks.track) {
-								//	botstring += formatted.similartracks.track[i].name + ' by '
-								//		+ formatted.similartracks.track[i].artist.name + ', ';
-								//}
-								
-								//Using this instead because last.fm always returns
+								//Ignore the first two songs since last.fm returns
 								//two songs by the same artist when making this call
 								botstring += formatted.similartracks.track[2].name + ' by '
 									+ formatted.similartracks.track[2].artist.name + ', ';
@@ -630,23 +639,10 @@ bot.on('speak', function (data) {
 		//USER DATABASE COMMANDS
 		//--------------------------------------
 
-		//Returns the user's play count, total awesomes/lames, and average awesomes/lames
+		//Returns the room's play count, total awesomes/lames, and average awesomes/lames
 		//in the room
 		case 'stats':
 			if (config.useDatabase) {
-				/**client.query('SELECT total, djs, up, avgup, down, avgdown FROM '
-					+ '(SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
-					+ 'sum(down) as down, avg(down) as avgdown FROM ' + config.SONG_TABLE + 
-					+ ') as stattable, (SELECT count(*) as djs FROM (SELECT count(*) from '
-					+ config.SONG_TABLE + ' group by djid) as innertable) as djcount',
-					function select(error, results, fields) {
-						bot.speak('In this room, '
-							+ results[0]['total'] + ' songs have been played from '
-							+ results[0]['djs'] + ' users with a total of '
-							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
-							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
-							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
-							+ ').');*/
 				client.query('SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
 					+ 'sum(down) as down, avg(down) as avgdown FROM ' + config.SONG_TABLE,
 					function select(error, results, fields) {
@@ -928,24 +924,6 @@ bot.on('speak', function (data) {
 			}
 			break;
 
-		//Pulls all DJs on stage and plays a song.
-		case 'cb4':
-			if (admincheck(data.userid)) {
-				bot.speak('Awwwww yeah');
-				for (i in djs) {
-					bot.remDj(djs[i]);
-				}
-				bot.addDj();
-			}
-			break;
-
-		//Changes room
-		case 'Meow, go to ias':
-			if (data.userid == config.MAINADMIN) {
-				bot.roomDeregister();
-				bot.roomRegister(config.IASROOMID);
-			}
-			break;
 		case 'Meow, go to reptar room':
 			if (data.userid == config.MAINADMIN) {
 				bot.roomDeregister();
@@ -983,9 +961,6 @@ bot.on('speak', function (data) {
 				setTimeout(function() {
 					reptarCall();
 				}, 5600);
-				setTimeout(function() {
-					reptarCall();
-				}, 7000);
 			}
 			break;
 
@@ -1146,6 +1121,7 @@ bot.on('newsong', function (data) {
 	
 	//Reset bonus points
 	bonuspoints = new Array();
+	bonusvote = false;
 	
 
 	//SAIL!
@@ -1179,6 +1155,18 @@ bot.on('newsong', function (data) {
 		setTimeout(function() {
 			bot.speak('But it\'s just cat and mouse!');
 		}, 98500);
+	}
+	
+	if((currentsong.artist == 'Of Monsters And Men') && (currentsong.song == 'Little Talks')) {
+	setTimeout(function() {
+			bot.speak('Hey!')	;
+		}, 63000);
+		setTimeout(function() {
+			bot.speak('Hey!')	;
+		}, 67500);
+		setTimeout(function() {
+			bot.speak('Hey!')	;
+		}, 72000);
 	}
 
 	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff') && config.botSing) {
@@ -1238,8 +1226,30 @@ bot.on('snagged', function(data) {
 	currentsong.snags++;
 	bonuspoints.push(usersList[data.userid].name);
 	var target = getTarget();
-	if(bonuspoints.length >= target) {
+	if((bonuspoints.length >= target) && !bonusvote) {
 		bot.speak('Bonus!');
 		bot.vote('up');
+		bot.snag();
+		bonusvote = true;
 	}	
+});
+
+bot.on('rem_moderator', function(data) {
+	if(config.MAINADMIN == data.userid) {
+		setTimeout(function() {
+			bot.addModerator(config.MAINADMIN);
+		}, 200);
+	}
+});
+
+bot.on('booted_user', function(data) {
+	//if the bot was booted, reboot
+	if((config.USERID == data.userid) && config.autoRejoin) {
+		setTimeout(function() {
+			bot.roomRegister(config.ROOMID);
+		}, 25000);
+		setTimeout(function() {
+			bot.speak('Please do not boot the room bot.');
+		}, 27000);
+	}
 });
