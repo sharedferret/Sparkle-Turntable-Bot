@@ -214,7 +214,7 @@ bot.on('tcpMessage', function (socket, msg) {
 			bot.addDj();
 			socket.write('>> Stepped up\n');
 			break;
-		case 'step down:
+		case 'step down':
 			bot.remDj(config.USERID);
 			socket.write('>> Stepped down\n');
 			break;
