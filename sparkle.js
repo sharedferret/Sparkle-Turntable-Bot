@@ -1170,10 +1170,9 @@ bot.on('newsong', function (data) {
 	
 	//Reset bonus points
 	bonusvote = false;
+	bonuspoints = new Array();
 	if (config.voteBonus) {
 		bonusvotepoints = getVoteTarget();
-	} else {
-		bonuspoints = new Array();
 	}
 	
 
