@@ -177,7 +177,7 @@ function getTarget() {
 
 function getVoteTarget() {
 	if (currentsong.listeners <= 3) {
-		return 1;
+		return 2;
 	}
 	return Math.ceil(Math.pow(1.1383*(currentsong.listeners - 3), 0.6176));
 }
@@ -209,6 +209,18 @@ bot.on('tcpMessage', function (socket, msg) {
 			break;
 		case 'online':
 			socket.write('>> ' + currentsong.listeners + '\n');
+			break;
+		case 'users':
+			var output = '';
+			for (var i in usersList) {
+				output += (usersList[i].name) + ', ';
+			}
+			socket.write(output.substring(0,output.length - 2) + '\n');
+			break;
+		case 'nowplaying':
+			socket.write('>> ' + currentsong.artist + ' - ' + currentsong.song
+				+ '\n>> DJ ' + currentsong.djname + ' +' + currentsong.up 
+				+ ' -' + currentsong.down + '\n');
 			break;
 		case '.a':
 			bot.vote('up');
@@ -1121,7 +1133,8 @@ bot.on('endsong', function (data) {
 	//Report song stats in chat
 	if (config.reportSongStats) {
 		bot.speak(currentsong.song + ' stats: awesomes: '
-			+ currentsong.up + ' lames: ' + currentsong.down);
+			+ currentsong.up + ' lames: ' + currentsong.down
+			+ ' snags: ' + currentsong.snags);
 	}
 });
 
