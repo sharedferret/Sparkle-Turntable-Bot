@@ -504,7 +504,8 @@ bot.on('speak', function (data) {
 		//Checks the number of points cast for a song, as well as the number needed
 		case 'points':
 			if (config.voteBonus) {
-				bot.speak(bonusvotepoints + ' awesomes are needed for a bonus.');
+				bot.speak(bonusvotepoints + ' awesomes are needed for a bonus (currently '
+					+ currentsong.up + ').');
 			} else {
 				var target = getTarget();
 				bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
@@ -755,25 +756,6 @@ bot.on('speak', function (data) {
 				});
 			}
 			break;
-		
-		case 'rank':
-			if (config.useDatabase) {
-				client.query('SET @rownum := 0');
-				client.query('SELECT POINTS, rank FROM (SELECT @rownum := @rownum + 1 AS '
-					+ 'rank, djid, POINTS FROM (SELECT djid, sum(up) as POINTS from SONGLIST '
-					+ 'group by djid order by sum(up) desc) as test) as rank where '
-					+ 'djid like \'' + data.userid + '\'',
-					function select(error, results, fields) {
-						try {
-						bot.speak (data.name + ', you have ' + results[0]['POINTS'] + ' points in'
-							+ ' this room (Rank: ' + results[0]['rank'] + ')');
-						} catch(e) {
-							bot.speak('You haven\'t played any songs in this room!');
-						}
-					});
-			}
-			break;
-					
 
 		//Returns the three DJs with the most points logged in the songlist table
 		case 'worstdjs':
@@ -945,14 +927,6 @@ bot.on('speak', function (data) {
 					function selectCb(error, results, fields) {
 						bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
 				});
-				setTimeout(function() {
-					client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
-						+ ' FROM information_schema.TABLES'
-						+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
-						function selectCb(error, results, fields) {
-							bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
-					});
-				}, 500);
 			}
 			break;
 
