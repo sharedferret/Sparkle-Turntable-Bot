@@ -355,6 +355,7 @@ bot.on('update_votes', function (data) {
 			bot.vote('up');
 			bot.speak('Bonus!');
 			bot.snag();
+			bonuspoints.push('xxMEOWxx');
 			bonusvote = true;
 		}
 	}
@@ -1289,7 +1290,11 @@ bot.on('add_dj', function(data) {
 
 bot.on('snagged', function(data) {
 	currentsong.snags++;
-	bonuspoints.push(usersList[data.userid].name);
+	
+	if (!config.voteBonus) {
+		bonuspoints.push(usersList[data.userid].name);
+	}
+	
 	var target = getTarget();
 	if((bonuspoints.length >= target) && !bonusvote && !config.voteBonus) {
 		bot.speak('Bonus!');
