@@ -1211,18 +1211,6 @@ bot.on('newsong', function (data) {
 			bot.speak('But it\'s just cat and mouse!');
 		}, 98500);
 	}
-	
-	if((currentsong.artist == 'Of Monsters And Men') && (currentsong.song == 'Little Talks')) {
-	setTimeout(function() {
-			bot.speak('Hey!')	;
-		}, 63000);
-		setTimeout(function() {
-			bot.speak('Hey!')	;
-		}, 67500);
-		setTimeout(function() {
-			bot.speak('Hey!')	;
-		}, 72000);
-	}
 
 	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff') && config.botSing) {
 		setTimeout(function() {
