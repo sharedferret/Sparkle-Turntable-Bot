@@ -85,6 +85,7 @@ var userstepped = false;
 //Used for bonus awesoming
 var bonuspoints = new Array();
 var bonusvote = false;
+var bonusvotepoints = 0;
 
 //Current song info
 var currentsong = {
@@ -172,7 +173,14 @@ function getTarget() {
 		return 4;
 	}
 	return 5 + Math.floor((currentsong.listeners - 20) / 20);
-}	
+}
+
+function getVoteTarget() {
+	if (currentsong.listeners <= 3) {
+		return 2;
+	}
+	return Math.ceil(Math.pow(1.1383*(currentsong.listeners - 3), 0.6176));
+}
 
 //Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
@@ -202,6 +210,18 @@ bot.on('tcpMessage', function (socket, msg) {
 		case 'online':
 			socket.write('>> ' + currentsong.listeners + '\n');
 			break;
+		case 'users':
+			var output = '';
+			for (var i in usersList) {
+				output += (usersList[i].name) + ', ';
+			}
+			socket.write(output.substring(0,output.length - 2) + '\n');
+			break;
+		case 'nowplaying':
+			socket.write('>> ' + currentsong.artist + ' - ' + currentsong.song
+				+ '\n>> DJ ' + currentsong.djname + ' +' + currentsong.up 
+				+ ' -' + currentsong.down + '\n');
+			break;
 		case '.a':
 			bot.vote('up');
 			socket.write('>> Awesomed\n');
@@ -214,7 +234,7 @@ bot.on('tcpMessage', function (socket, msg) {
 			bot.addDj();
 			socket.write('>> Stepped up\n');
 			break;
-		case 'step down:
+		case 'step down':
 			bot.remDj(config.USERID);
 			socket.write('>> Stepped down\n');
 			break;
@@ -307,6 +327,10 @@ bot.on('roomChanged', function(data) {
 	//Creates the dj list
 	djs = data.room.metadata.djs;
 	
+	if (config.voteBonus) {
+		bonusvotepoints = getVoteTarget();
+	}
+	
 	//Repopulates usersList array.
 	var users = data.users;
 	for (i in users) {
@@ -325,6 +349,16 @@ bot.on('update_votes', function (data) {
 	currentsong.up = data.room.metadata.upvotes;
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
+	
+	if (config.voteBonus && !bonusvote) {
+		if (currentsong.up >= bonusvotepoints) {
+			bot.vote('up');
+			bot.speak('Bonus!');
+			bot.snag();
+			bonuspoints.push('xxMEOWxx');
+			bonusvote = true;
+		}
+	}
 
 	//Log vote in console
 	//Note: Username only displayed for upvotes, since TT doesn't broadcast
@@ -357,6 +391,10 @@ bot.on('registered',   function (data) {
 	//Add user to usersList
 	var user = data.user[0];
 	usersList[user.userid] = user;
+	
+	if (config.voteBonus) {
+		bonusvotepoints = getVoteTarget();
+	}
 
 	//Greet user
 	//Displays custom greetings for certain members
@@ -449,7 +487,8 @@ bot.on('speak', function (data) {
 		case 'dance':
 		case '/dance':
 			//If the user has not cast a bonus point, add to bonuspoints array
-			if (bonuspoints.indexOf(data.name) == -1) {
+			//Only use this scheme if vote-based bonus points are disabled
+			if ((bonuspoints.indexOf(data.name) == -1) && !config.voteBonus) {
 				bonuspoints.push(data.name);
 				var target = getTarget();
 				//If the target has been met, the bot will awesome
@@ -460,12 +499,17 @@ bot.on('speak', function (data) {
 					bonusvote = true;
 				}
 			}
-			break;
+		break;
 			
 		//Checks the number of points cast for a song, as well as the number needed
 		case 'points':
-			var target = getTarget();
-			bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+			if (config.voteBonus) {
+				bot.speak(bonusvotepoints + ' awesomes are needed for a bonus (currently '
+					+ currentsong.up + ').');
+			} else {
+				var target = getTarget();
+				bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+			}
 			break;
 			
 		//--------------------------------------
@@ -643,11 +687,18 @@ bot.on('speak', function (data) {
 		//in the room
 		case 'stats':
 			if (config.useDatabase) {
-				client.query('SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
+				client.query('SELECT @uniquesongs := count(*) FROM (select * from '
+					+ config.SONG_TABLE + ' group by concat(song, \' by \', artist)) as songtbl');
+				client.query('SELECT @numdjs := count(*) FROM (select * from '
+					+ config.SONG_TABLE + ' group by djid) as djtable');
+				client.query('SELECT @uniquesongs as uniquesongs, @numdjs as numdjs, '
+					+ 'count(*) as total, sum(up) as up, avg(up) as avgup, '
 					+ 'sum(down) as down, avg(down) as avgdown FROM ' + config.SONG_TABLE,
 					function select(error, results, fields) {
 						bot.speak('In this room, '
-							+ results[0]['total'] + ' songs have been played with a total of '
+							+ results[0]['total'] + ' songs ('
+							+ results[0]['uniquesongs'] + ' unique) have been played by '
+							+ results[0]['numdjs'] + ' DJs with a total of '
 							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
 							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
 							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
@@ -794,16 +845,24 @@ bot.on('speak', function (data) {
 		//in the room
 		case 'mystats':
 			if (config.useDatabase) {
-				client.query('SELECT count(*) as total, sum(up) as up, avg(up) as avgup, '
+				//These two statements gets the user's rank (by awesomes) and sets it to @rank
+				client.query('SET @rownum := 0');
+				client.query('SELECT @rank := rank FROM (SELECT @rownum := @rownum + 1 AS '
+					+ 'rank, djid, POINTS FROM (SELECT djid, sum(up) as POINTS from SONGLIST '
+					+ 'group by djid order by sum(up) desc) as test) as rank where '
+					+ 'djid like \'' + data.userid + '\'');
+				//This statement grabs the rank from the previous query, and gets the total songs
+				//played, total awesomes, lames, and averages
+				client.query('SELECT @rank as rank, count(*) as total, sum(up) as up, avg(up) as avgup, '
 					+ 'sum(down) as down, avg(down) as avgdown '
 					+ 'FROM '+ config.SONG_TABLE + ' WHERE `djid` LIKE \'' + data.userid + '\'',
 					function select(error, results, fields) {
-						bot.speak(data.name + ', you have played '
-							+ results[0]['total'] + ' songs in this room with a total of '
+						bot.speak (data.name + ', you have played ' + results[0]['total'] 
+							+ ' songs in this room with a total of '
 							+ results[0]['up'] + ' awesomes and ' + results[0]['down']
 							+ ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
 							+ '/-' + new Number(results[0]['avgdown']).toFixed(1)
-							+ ').');
+							+ ') (Rank: ' + results[0]['rank'] + ')');
 				});
 			}
 			break;
@@ -868,14 +927,6 @@ bot.on('speak', function (data) {
 					function selectCb(error, results, fields) {
 						bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
 				});
-				setTimeout(function() {
-					client.query('SELECT sum( data_length + index_length ) / 1024 / 1024 \'dbsize\''
-						+ ' FROM information_schema.TABLES'
-						+ ' WHERE (table_schema = \'' + config.DATABASE + '\')',
-						function selectCb(error, results, fields) {
-							bot.speak('Database size: ' + results[0]['dbsize'] + ' MB.');
-					});
-				}, 500);
 			}
 			break;
 
@@ -1072,7 +1123,8 @@ bot.on('endsong', function (data) {
 	//Report song stats in chat
 	if (config.reportSongStats) {
 		bot.speak(currentsong.song + ' stats: awesomes: '
-			+ currentsong.up + ' lames: ' + currentsong.down);
+			+ currentsong.up + ' lames: ' + currentsong.down
+			+ ' snags: ' + currentsong.snags);
 	}
 });
 
@@ -1120,8 +1172,11 @@ bot.on('newsong', function (data) {
 	}
 	
 	//Reset bonus points
-	bonuspoints = new Array();
 	bonusvote = false;
+	bonuspoints = new Array();
+	if (config.voteBonus) {
+		bonusvotepoints = getVoteTarget();
+	}
 	
 
 	//SAIL!
@@ -1224,9 +1279,13 @@ bot.on('add_dj', function(data) {
 
 bot.on('snagged', function(data) {
 	currentsong.snags++;
-	bonuspoints.push(usersList[data.userid].name);
+	
+	if (!config.voteBonus) {
+		bonuspoints.push(usersList[data.userid].name);
+	}
+	
 	var target = getTarget();
-	if((bonuspoints.length >= target) && !bonusvote) {
+	if((bonuspoints.length >= target) && !bonusvote && !config.voteBonus) {
 		bot.speak('Bonus!');
 		bot.vote('up');
 		bot.snag();

@@ -41,7 +41,7 @@ exports.lastfmkey = '#####';
 
 //Flags
 exports.logConsoleEvents = false;	//Log room data in console
-exports.autoAwesome      = true;	//Auto-awesomes every song
+exports.voteBonus	      = true;	//Bot awesomes if % in room is high enough
 exports.autoRejoin       = true;	//Will re-join a room after being booted
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
