@@ -4,7 +4,7 @@
  *  Version: [dev] 2012.01.12
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
- *  Based on bot implementations by alaingilbert, anamorphism, and heatvision
+ *  Based on bot implementations by anamorphism and heatvision
  *  Uses node.js with node modules ttapi, mysql, request
  * 
  *  Run: 'node sparkle.js'
@@ -77,15 +77,21 @@ if (config.useTCP) {
 }
 
 //Room information
-var usersList = { };
-var djs = { };
-var usertostep;
-var userstepped = false;
+var usersList = { };                //A list of users in the room
+var djs = { };                      //A list of current DJs
+
+//One and Down handlers
+var usertostep;                     //The userid of the DJ to step down
+var userstepped = false;            //A flag denoting if that user has stepped down
+var enforcementtimeout = new Date();//The time that the user stepped down
+var ffa = false;                    //A flag denoting if free-for-all mode is active
+var legalstepdown = true;           //A flag denoting if a user stepped up legally
+var pastdjs = new Array();          //An array of the past 4 DJs
 
 //Used for bonus awesoming
-var bonuspoints = new Array();
-var bonusvote = false;
-var bonusvotepoints = 0;
+var bonuspoints = new Array();      //An array of DJs wanting the bot to bonus
+var bonusvote = false;              //A flag denoting if the bot has bonus'd a song
+var bonusvotepoints = 0;            //The number of awesomes needed for the bot to awesome
 
 //Current song info
 var currentsong = {
@@ -160,12 +166,12 @@ function enforceRoom() {
 				if(!userstepped) {
 					bot.remDj(usertostep);
 				}
-			}, 19000);
+			}, 15000);
 		}
 	}, 15000);
 }
 
-//Calculates the target number of votes needed for bot to awesome
+//Calculates the target number of bonus votes needed for bot to awesome
 function getTarget() {
 	if (currentsong.listeners < 11) {
 		return 3;
@@ -175,6 +181,7 @@ function getTarget() {
 	return 5 + Math.floor((currentsong.listeners - 20) / 20);
 }
 
+//Calculates the target number of awesomes needed for the bot to awesome
 function getVoteTarget() {
 	if (currentsong.listeners <= 3) {
 		return 2;
@@ -199,19 +206,21 @@ bot.on('tcpMessage', function (socket, msg) {
 	//TODO: Change userid to user name
 	if (msg.match(/^boot/)) {
 		bot.boot(msg.substring(5));
+        socket.write('>> User booted\n');
 	}
 	
 	//Handle commands
 	switch (msg) {
 		case 'help':
 			socket.write('>> xxMEOWxx responds to the following commands in the console: '
-				+ 'online, .a, .l, step up, step down, speak [text], exit, shutdown\n');
+				+ 'online, .a,\n'
+                + '>> .l, step up, step down, speak [text], exit, shutdown\n');
 			break;
 		case 'online':
 			socket.write('>> ' + currentsong.listeners + '\n');
 			break;
 		case 'users':
-			var output = '';
+			var output = '>> ';
 			for (var i in usersList) {
 				output += (usersList[i].name) + ', ';
 			}
@@ -259,8 +268,6 @@ bot.on('tcpMessage', function (socket, msg) {
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
 //and sets up the database/tables
-//TODO: Actually handle those errors (99% of the time it'll be a "db/table
-//	already exists" error which is why I didn't handle them immediately)
 bot.on('ready', function (data) {
 	if (config.useDatabase) {
 		//Creates DB and tables if needed, connects to db
@@ -327,6 +334,8 @@ bot.on('roomChanged', function(data) {
 	//Creates the dj list
 	djs = data.room.metadata.djs;
 	
+    //If the vote bonus flag is set, find the number of awesomes needed for
+    //the current song
 	if (config.voteBonus) {
 		bonusvotepoints = getVoteTarget();
 	}
@@ -350,11 +359,11 @@ bot.on('update_votes', function (data) {
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
 	
+    //If the vote exceeds the bonus threshold, have the bot give a bonus point
 	if (config.voteBonus && !bonusvote) {
 		if (currentsong.up >= bonusvotepoints) {
 			bot.vote('up');
 			bot.speak('Bonus!');
-			bot.snag();
 			bonuspoints.push('xxMEOWxx');
 			bonusvote = true;
 		}
@@ -392,6 +401,7 @@ bot.on('registered',   function (data) {
 	var user = data.user[0];
 	usersList[user.userid] = user;
 	
+    //If the vote bonus flag is set, find the number of awesomes needed
 	if (config.voteBonus) {
 		bonusvotepoints = getVoteTarget();
 	}
@@ -399,6 +409,7 @@ bot.on('registered',   function (data) {
 	//Greet user
 	//Displays custom greetings for certain members
 	if(config.welcomeUsers) {
+        //Ignore ttdashboard bots
 		if (!user.name.match(/^ttdashboard/)) {
 			if (config.useDatabase) {
 				client.query('SELECT greeting FROM HOLIDAY_GREETINGS WHERE '
@@ -426,6 +437,7 @@ bot.on('deregistered', function (data) {
 	}
 	
 	//Remove user from userlist
+    //TODO: Replace this with a .splice fn
 	delete usersList[data.user[0].userid];
 });
 
@@ -619,6 +631,27 @@ bot.on('speak', function (data) {
 				+ '.  Chrome: ' + platforms.chrome
 				+ '.  iPhone: ' + platforms.iphone + '.');
 			break;
+            
+        //Returns information on the current song (for users without TT+)
+        case 'songinfo':
+            bot.speak(currentsong.song + ': Awesomes: ' + currentsong.up + '  Lames: '
+                + currentsong.down + '  Snags: ' + currentsong.snags);
+            break;
+            
+        //Debug: lists which users must wait before stepping up in one and down mode
+        case 'waitlist':
+            if (config.oneDownEnforce) {
+                var pastdjnames = 'These DJs must wait before stepping up: ';
+                for (i in pastdjs) {
+                    if (usersList[pastdjs[i].id] != null) {
+                        pastdjnames += usersList[pastdjs[i].id].name
+                            + ' (' + pastdjs[i].wait + ' songs), ';
+                    }
+                }
+                bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
+            }
+        break;
+            
 			
 		//--------------------------------------
 		//HTTP REST QUERIES
@@ -636,6 +669,8 @@ bot.on('speak', function (data) {
                     	if(!error && response.statusCode == 200) {
                         	var formatted = eval('(' + body + ')');
 							var botstring = 'Similar songs to ' + currentsong.song + ': ';
+                            
+                            //TODO: Make sure this is the best way to do this.
 							try {
 								//Ignore the first two songs since last.fm returns
 								//two songs by the same artist when making this call
@@ -919,7 +954,7 @@ bot.on('speak', function (data) {
 			break;
 
 		//For debugging/monitoring of db
-		//Returns the number of songs logged and the size of the database in MB.
+		//Returns the number of songs logged.
 		case 'dbsize':
 			if (config.useDatabase) {
 				//var response = 'Songs logged';
@@ -1025,6 +1060,24 @@ bot.on('speak', function (data) {
 			}
 		
 	}
+    
+    //Checks if a user can step up as per room rules or if they must wait
+    if (text.toLowerCase().match(/^can i step up/) && config.oneDownEnforce) {
+        var unable = false;
+        for (i in pastdjs) {
+            if (pastdjs[i].id == data.userid) {
+                unable = true;
+                if (pastdjs[i].wait == 1) {
+                    bot.speak(name + ', please wait one more song.');
+                } else {
+                    bot.speak(name + ', please wait another ' + pastdjs[i].wait + ' songs.');
+                }
+            }
+        }
+        if (!unable) {
+            bot.speak(name + ', go ahead!');
+        }
+    }
 
 	//Returns weather for a user-supplied city using YQL.
 	//Returns bot's location if no location supplied.
@@ -1116,9 +1169,16 @@ bot.on('endsong', function (data) {
 		addToDb();
 	}
 
+    //If a DJ that needed to step down hasn't by the end of the
+    //next DJ's song, remove them immediately
+    if (config.oneDownEnforce && !userstepped) {
+        bot.remDj(usertostep);
+    }
+    
 	//Used for room enforcement
 	userstepped = false;
 	usertostep = currentsong.djid;
+    
 
 	//Report song stats in chat
 	if (config.reportSongStats) {
@@ -1126,6 +1186,8 @@ bot.on('endsong', function (data) {
 			+ currentsong.up + ' lames: ' + currentsong.down
 			+ ' snags: ' + currentsong.snags);
 	}
+    
+    
 });
 
 //Runs when a new song is played
@@ -1161,14 +1223,6 @@ bot.on('newsong', function (data) {
 	//Log in console
 	if (config.logConsoleEvents) {
 		console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
-	}
-
-	//Auto-awesome
-	if (config.autoAwesome) {
-		var randomwait = Math.floor(Math.random() * 20) + 4;
-		setTimeout(function() {
-			bot.vote('up');
-		}, randomwait * 1000);
 	}
 	
 	//Reset bonus points
@@ -1245,14 +1299,42 @@ bot.on('rem_dj', function (data) {
 	if (usertostep == data.user[0].userid) {
 		userstepped = true;
 		usertostep = null;
+        
+        if (config.oneDownEnforce) {
+            //When a user steps, add them to the past djs array
+            pastdjs.push({id: data.user[0].userid, wait: 5});
+            
+            //Decrease the song-wait count for all past djs
+            for (i in pastdjs) {
+                pastdjs[i].wait--;
+            }
+            
+            //If a DJ is now eligible to step up, remove them from the list
+            for (i in pastdjs) {
+                if (pastdjs[i].wait < 1) {
+                pastdjs.splice(i, 1);
+                }
+            }
+        }
 	}
+    
+    //Set time this event occurred for enforcing one and down room policy
+    if (legalstepdown) {
+        enforcementtimeout = new Date();
+    }
+    legalstepdown = true;
 
 	//Remove from dj list
 	for (i in djs) {
 		if (djs[i] == data.user[0].userid) {
-			delete djs[i];
+			djs.splice(i, 1);
 		}
 	}
+    
+    //If more than one DJ spot is open, set free-for-all mode to true
+    if (config.oneDownEnforce) {
+        ffa = (djs.length < 4);
+    }
 });
 
 //Runs when a dj steps up
@@ -1263,6 +1345,44 @@ bot.on('add_dj', function(data) {
 		console.log('Stepped up: ' + data.user[0].name);
 	}
 	djs[djs.length] = data.user[0].userid;
+    
+    //See if this user is in the past djs list
+    if (config.oneDownEnforce) {
+        var found = false;
+        for (i in pastdjs) {
+            if (pastdjs[i].id == data.user[0].userid) {
+                found = true;
+                }
+        }
+    
+        //Get time elapsed between previous dj stepping down and this dj stepping up
+        var waittime = new Date().getTime() - enforcementtimeout.getTime();
+    
+        if (found) {
+            //if the user waited longer than 10 seconds or it's a free-for-all, remove from list
+            //else, remove dj and warn
+            legalstepdown = ((waittime > 10000) || ffa);
+            if (legalstepdown) {
+                for (i in pastdjs) {
+                    if(pastdjs[i].id == data.user[0].userid) {
+                        pastdjs.splice(i, 1);
+                    }
+                }
+            } else {
+                //Remove DJ and warn
+                bot.remDj(data.user[0].userid);
+                for (i in pastdjs) {
+                    if(pastdjs[i].id == data.user[0].userid) {
+                        bot.speak(data.user[0].name + ', please wait ' + pastdjs[i].wait
+                            + ' more songs or ' + (10 - Math.floor(waittime/1000))
+                            + ' more seconds before DJing again.');
+                    }
+                }
+            }
+        }
+    }
+        
+    
 });
 
 bot.on('snagged', function(data) {
