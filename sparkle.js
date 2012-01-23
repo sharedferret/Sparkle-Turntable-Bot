@@ -372,9 +372,9 @@ bot.on('roomChanged', function(data) {
 	//Creates the dj list
 	djs = data.room.metadata.djs;
 	
-    //If the vote bonus flag is set, find the number of awesomes needed for
+    //If the bonus flag is set to VOTE, find the number of awesomes needed for
     //the current song
-	if (config.voteBonus) {
+	if (config.voteBonus == 'VOTE') {
 		bonusvotepoints = getVoteTarget();
 	}
 	
@@ -397,8 +397,9 @@ bot.on('update_votes', function (data) {
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
 	
-    //If the vote exceeds the bonus threshold, have the bot give a bonus point
-	if (config.voteBonus && !bonusvote) {
+    //If the vote exceeds the bonus threshold and the bot's bonus mode
+    //is set to VOTE, give a bonus point
+	if ((config.voteBonus == 'VOTE') && !bonusvote) {
 		if (currentsong.up >= bonusvotepoints) {
 			bot.vote('up');
 			bot.speak('Bonus!');
@@ -439,8 +440,8 @@ bot.on('registered',   function (data) {
 	var user = data.user[0];
 	usersList[user.userid] = user;
 	
-    //If the vote bonus flag is set, find the number of awesomes needed
-	if (config.voteBonus) {
+    //If the bonus flag is set to VOTE, find the number of awesomes needed
+	if (config.voteBonus == 'VOTE') {
 		bonusvotepoints = getVoteTarget();
 	}
 
@@ -537,8 +538,8 @@ bot.on('speak', function (data) {
 		case 'dance':
 		case '/dance':
 			//If the user has not cast a bonus point, add to bonuspoints array
-			//Only use this scheme if vote-based bonus points are disabled
-			if ((bonuspoints.indexOf(data.name) == -1) && !config.voteBonus) {
+			//This is used if the bot's bonus mode is CHAT
+			if ((bonuspoints.indexOf(data.name) == -1) && (config.voteBonus == 'CHAT') {
 				bonuspoints.push(data.name);
 				var target = getTarget();
 				//If the target has been met, the bot will awesome
@@ -553,10 +554,10 @@ bot.on('speak', function (data) {
 			
 		//Checks the number of points cast for a song, as well as the number needed
 		case 'points':
-			if (config.voteBonus) {
+			if (config.voteBonus == 'VOTE') {
 				bot.speak(bonusvotepoints + ' awesomes are needed for a bonus (currently '
 					+ currentsong.up + ').');
-			} else {
+			} else if (config.voteBonus == 'CHAT') {
 				var target = getTarget();
 				bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
 			}
@@ -1253,9 +1254,14 @@ bot.on('newsong', function (data) {
 	//Reset bonus points
 	bonusvote = false;
 	bonuspoints = new Array();
-	if (config.voteBonus) {
+	if (config.voteBonus == 'VOTE') {
 		bonusvotepoints = getVoteTarget();
-	}
+	} else if (config.voteBonus == 'AUTO') {
+        var randomwait = Math.floor(Math.random() * 20) + 4;
+        setTimeout(function() {
+            bot.vote('up');
+        }, randomwait * 1000);
+    }
 	
 
 	//SAIL!
@@ -1413,12 +1419,12 @@ bot.on('add_dj', function(data) {
 bot.on('snagged', function(data) {
 	currentsong.snags++;
 	
-	if (!config.voteBonus) {
+	if (config.voteBonus == 'CHAT') {
 		bonuspoints.push(usersList[data.userid].name);
 	}
 	
 	var target = getTarget();
-	if((bonuspoints.length >= target) && !bonusvote && !config.voteBonus) {
+	if((bonuspoints.length >= target) && !bonusvote && (config.voteBonus == 'CHAT')) {
 		bot.speak('Bonus!');
 		bot.vote('up');
 		bot.snag();

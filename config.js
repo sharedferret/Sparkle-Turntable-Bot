@@ -41,7 +41,18 @@ exports.lastfmkey = '#####';
 
 //Flags
 exports.logConsoleEvents = false;	//Log room data in console
-exports.voteBonus	      = true;	//Bot awesomes if % in room is high enough
+
+//Vote bonus options: NONE, VOTE, CHAT, AUTO
+//This flag tells the bot when to awesome a song
+//NONE: The bot will never awesome
+//VOTE: The bot awesomes when a vote threshold is met (# of awesomes)
+//CHAT: The bot awesomes when enough people say a bonus phrase
+//AUTO: The bot auto-awesomes
+//(Note: Turntable.fm does not allow bots to auto-awesome. If you set
+// your bot to auto-awesome, it is likely that the bot will be deleted.
+// The implementation is included as a reference only.)
+exports.voteBonus       = 'VOTE';
+
 exports.autoRejoin       = true;	//Will re-join a room after being booted
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
