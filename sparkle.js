@@ -539,7 +539,7 @@ bot.on('speak', function (data) {
 		case '/dance':
 			//If the user has not cast a bonus point, add to bonuspoints array
 			//This is used if the bot's bonus mode is CHAT
-			if ((bonuspoints.indexOf(data.name) == -1) && (config.voteBonus == 'CHAT') {
+			if ((bonuspoints.indexOf(data.name) == -1) && (config.voteBonus == 'CHAT')) {
 				bonuspoints.push(data.name);
 				var target = getTarget();
 				//If the target has been met, the bot will awesome
