@@ -189,6 +189,44 @@ function getVoteTarget() {
 	return Math.ceil(Math.pow(1.1383*(currentsong.listeners - 3), 0.6176));
 }
 
+function canUserStep(name, userid) {
+    //Case 1: DJ is already on the decks
+    for (i in djs) {
+        if (djs[i] == userid) {
+            found = true;
+            return 'You\'re already up!';
+        }
+    }
+    
+    //Case 2: FFA
+    if (djs.length < 4) {
+        return 'There\'s more than one spot open, so anyone can step up!';
+    }
+    
+    //Case 3: Longer than 10 seconds
+    if ((djs.length < 5) && ((new Date()).getTime() - enforcementtimeout > 10000)) {
+        return 'It\'s been 10 seconds, so anyone can step up!';
+    }
+    
+    //Case 4: DJ in queue
+    for (i in pastdjs) {
+        if (pastdjs[i].id == userid) {
+            if (pastdjs[i].wait == 1) {
+                return (name + ', please wait one more song.');
+            } else {
+                return (name + ', please wait another ' + pastdjs[i].wait + ' songs.');
+            }
+        }
+    }
+    
+    //Case 5: Free to step up
+    if (djs.length == 5) {
+        return (name + ', you can, but there aren\'t any spots...');
+    }
+    
+    return (name + ', go ahead!');
+}
+
 //Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
 	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
@@ -1063,20 +1101,7 @@ bot.on('speak', function (data) {
     
     //Checks if a user can step up as per room rules or if they must wait
     if (text.toLowerCase().match(/^can i step up/) && config.oneDownEnforce) {
-        var unable = false;
-        for (i in pastdjs) {
-            if (pastdjs[i].id == data.userid) {
-                unable = true;
-                if (pastdjs[i].wait == 1) {
-                    bot.speak(name + ', please wait one more song.');
-                } else {
-                    bot.speak(name + ', please wait another ' + pastdjs[i].wait + ' songs.');
-                }
-            }
-        }
-        if (!unable) {
-            bot.speak(name + ', go ahead!');
-        }
+        bot.speak(canUserStep(name, data.userid));
     }
 
 	//Returns weather for a user-supplied city using YQL.
