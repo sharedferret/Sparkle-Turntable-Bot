@@ -39,6 +39,8 @@ try {
 	process.exit(0);
 }
 
+var singalong = require('./singalong.js');
+
 //Creates mysql db object
 if (config.useDatabase) {
 	try {
@@ -561,7 +563,7 @@ bot.on('speak', function (data) {
 				var target = getTarget();
 				bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
 			}
-			break;
+        break;
 			
 		//--------------------------------------
 		//USER COMMANDS
@@ -1262,58 +1264,20 @@ bot.on('newsong', function (data) {
             bot.vote('up');
         }, randomwait * 1000);
     }
-	
-
-	//SAIL!
-	if((currentsong.artist == 'AWOLNATION') && (currentsong.song == 'Sail') && config.botSing) {
-		setTimeout(function() {
-			bot.speak('SAIL!');
-		}, 34500);
-	}
-
-	//--------------------------------------
-	// REPTAR SINGALONGS
-	//--------------------------------------
-
-	//CAN YOU FEEL IT?
-	if(currentsong.song == 'Houseboat Babies' && config.botSing) {
-		setTimeout(function() {
-			bot.speak('CAN YOU FEEL IT?')	;
-		}, 86000);
-		setTimeout(function() {
-			bot.speak('YES I CAN FEEL IT');
-		}, 88500);
-		setTimeout(function() {
-			bot.speak('When I\'m at Jenny\'s house');
-		}, 90000);
-		setTimeout(function() {
-			bot.speak('I look for bad ends');
-		}, 93500);
-		setTimeout(function() {
-			bot.speak('Forget your parents!');
-		}, 96000);
-		setTimeout(function() {
-			bot.speak('But it\'s just cat and mouse!');
-		}, 98500);
-	}
-
-	if((currentsong.artist == 'Reptar') && (currentsong.song == 'Blastoff') && config.botSing) {
-		setTimeout(function() {
-			bot.speak('Well I won\'t call you!');
-		}, 184000);
-		setTimeout(function() {
-			bot.speak('If you don\'t call me!');
-		}, 186000);
-		setTimeout(function() {
-			bot.speak('No no I won\'t call you!');
-		}, 188000);
-		setTimeout(function() {
-			bot.speak('If you don\'t call me!');
-		}, 190000);
-		setTimeout(function() {
-			bot.speak('Yeah!');
-		}, 192000);
-	}
+    
+    //If the botSing is enabled, see if there are any lyrics for this song
+    if (console.botSing) {
+        //Try to find lyrics from singalong.js
+        var lyrics = singalong.getLyrics(currentsong.artist, currentsong.song);
+        if (lyrics != null) {
+            //If lyrics were found, loop through and set a timeout for each
+            for (i in lyrics) {
+                var fnc = function(y) { 
+                    setTimeout(function() { bot.speak(lyrics[y][0]); }, lyrics[y][1]);
+                }(i);
+            }
+        }
+    }
 });
 
 //Runs when a dj steps down
