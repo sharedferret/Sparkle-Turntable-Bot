@@ -154,11 +154,10 @@ function reptarCall() {
 function addToDb(data) {
 	client.query(
 		'INSERT INTO '+ config.SONG_TABLE +' '
-		+ 'SET artist = ?,song = ?, djname = ?, djid = ?, up = ?, down = ?,'
+		+ 'SET artist = ?,song = ?, djid = ?, up = ?, down = ?,'
 		+ 'listeners = ?, started = NOW(), snags = ?, bonus = ?',
 		[currentsong.artist, 
-		currentsong.song, 
-		currentsong.djname, 
+		currentsong.song,  
 		currentsong.djid, 
 		currentsong.up, 
 		currentsong.down, 
@@ -540,13 +539,15 @@ function handleCommand(name, userid, text) {
     //Returns the three DJs with the most points in the last 24 hours
     case 'past24hours':
         if (config.useDatabase) {
-            client.query('SELECT djname, sum(up) AS upvotes FROM ' + config.SONG_TABLE
-                + ' WHERE started > DATE_SUB(NOW(), INTERVAL 1 DAY) GROUP BY djid '
-                + 'ORDER BY sum(up) DESC LIMIT 3',
+            client.query('SELECT username, upvotes FROM (SELECT djid, sum(up) as upvotes '
+                + 'FROM ' + config.SONG_TABLE + ' WHERE started > DATE_SUB(NOW(), INTERVAL '
+                + '1 DAY) GROUP BY djid) a INNER JOIN (SELECT * FROM ' + config.USER_TABLE
+                + ' GROUP BY userid ORDER BY lastseen DESC) b ON a.djid = b.userid ORDER BY '
+                + 'upvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'DJs with the most points in the last 24 hours: ';
                     for (i in results) {
-                        response += results[i]['djname'] + ': '
+                        response += results[i]['username'] + ': '
                             + results[i]['upvotes'] + ' awesomes.  ';
                     }
                     bot.speak(response);
@@ -557,14 +558,15 @@ function handleCommand(name, userid, text) {
     //Returns the three DJs with the most points logged in the songlist table
     case 'bestdjs':
         if (config.useDatabase) {
-            client.query('SELECT djname as DJ, sum(up) as POINTS from '
-                + '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
-                + ' group by djid order by sum(up) desc limit 3',
+            client.query('SELECT username, upvotes FROM (SELECT djid, sum(up) AS upvotes '
+                + 'FROM ' + config.SONG_TABLE + ' GROUP BY djid) a INNER JOIN (SELECT * '
+                + 'FROM ' + config.USER_TABLE + ' GROUP BY userid ORDER BY lastseen DESC)'
+                + ' b ON a.djid = b.userid ORDER BY upvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most points accrued in this room: ';
                     for (i in results) {
-                        response += results[i]['DJ'] + ': '
-                            + results[i]['POINTS'] + ' points.  ';
+                        response += results[i]['username'] + ': '
+                            + results[i]['upvotes'] + ' points.  ';
                     }
                     bot.speak(response);
             });
@@ -574,14 +576,15 @@ function handleCommand(name, userid, text) {
     //Returns the three DJs with the most points logged in the songlist table
     case 'worstdjs':
         if (config.useDatabase) {
-            client.query('SELECT djname as DJ, sum(down) as POINTS from '
-                + '(SELECT * from ' + config.SONG_TABLE + ' order by id desc) as SORTED'
-                + ' group by djid order by sum(down) desc limit 3',
+            client.query('SELECT username, downvotes FROM (SELECT djid, sum(down) AS downvotes '
+                + 'FROM ' + config.SONG_TABLE + ' GROUP BY djid) a INNER JOIN (SELECT * '
+                + 'FROM ' + config.USER_TABLE + ' GROUP BY userid ORDER BY lastseen DESC)'
+                + ' b ON a.djid = b.userid ORDER BY downvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most lames accrued in this room: ';
                     for (i in results) {
-                        response += results[i]['DJ'] + ': '
-                            + results[i]['POINTS'] + ' lames.  ';
+                        response += results[i]['username'] + ': '
+                            + results[i]['downvotes'] + ' lames.  ';
                     }
                     bot.speak(response);
             });
@@ -892,15 +895,13 @@ function handleCommand(name, userid, text) {
 	//Usage: 'pastnames [username]'
 	if (text.match(/^pastnames/)) {
 		if (config.useDatabase) {
-			client.query('SELECT djname FROM ' + config.SONG_TABLE
-				+ ' WHERE (djid LIKE (SELECT djid FROM '
-				+ config.SONG_TABLE + ' WHERE (djname like ?)'
-				+ ' ORDER BY id DESC LIMIT 1)) GROUP BY djname',
-				[text.substring(10)],
+			client.query('SELECT username FROM ' + config.USER_TABLE + ' WHERE (userid like (SELECT '
+                + 'userid FROM ' + config.USER_TABLE + ' WHERE username LIKE ? limit 1))',
+                [text.substring(10)],
 				function select(error, results, fields) {
 						var response = 'Names I\'ve seen that user go by: ';
 						for (i in results) {
-							response += results[i]['djname'] + ', ';
+							response += results[i]['username'] + ', ';
 						}
 						bot.speak(response.substring(0,response.length-2));
 			});
@@ -1041,7 +1042,6 @@ bot.on('ready', function (data) {
 			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 			+ ' artist VARCHAR(255),'
 			+ ' song VARCHAR(255),'
-			+ ' djname VARCHAR(255),'
 			+ ' djid VARCHAR(255),'
 			+ ' up INT(3),' + ' down INT(3),'
 			+ ' listeners INT(3),'
@@ -1059,12 +1059,24 @@ bot.on('ready', function (data) {
 		//chat table
 		client.query('CREATE TABLE ' + config.CHAT_TABLE
 			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
-			+ ' user VARCHAR(255),'
 			+ ' userid VARCHAR(255),'
 			+ ' chat VARCHAR(255),'
 			+ ' time DATETIME)',
 			function (error) {
 				//Handle an error if it's not a table already exists error
+				if(error && error.number != 1050) {
+					throw (error);
+				}
+		});
+        
+        //user table
+        client.query('CREATE TABLE ' + config.USER_TABLE
+            + '(userid VARCHAR(255), '
+            + 'username VARCHAR(255), '
+            + 'lastseen DATETIME, '
+            + 'PRIMARY KEY (userid, username))',
+            function (error) {
+                //Handle an error if it's not a table already exists error
 				if(error && error.number != 1050) {
 					throw (error);
 				}
@@ -1103,6 +1115,16 @@ bot.on('roomChanged', function(data) {
 		var user = users[i];
 		usersList[user.userid] = user;
 	}
+    
+    //Adds all active users to the users table - updates lastseen if we've seen
+    //them before, adds a new entry if they're new or have changed their username
+    //since the last time we've seen them
+    
+    for (i in users) {
+        client.query('INSERT INTO ' + config.USER_TABLE + ' SET userid = ?, username = ?, '
+            + 'lastseen = NOW() ON DUPLICATE KEY UPDATE lastseen = NOW()',
+            [users[i].userid, users[i].name]);
+    }
 	
 	//Set bot's laptop type
 	bot.modifyLaptop(config.LAPTOP);
@@ -1158,6 +1180,11 @@ bot.on('registered',   function (data) {
 	//Add user to usersList
 	var user = data.user[0];
 	usersList[user.userid] = user;
+    
+    //Add user to user table
+    client.query('INSERT INTO ' + config.USER_TABLE + ' SET userid = ?, username = ?, '
+        + 'lastseen = NOW() ON DUPLICATE KEY UPDATE lastseen = NOW()',
+        [user.userid, user.name]);
 	
     //If the bonus flag is set to VOTE, find the number of awesomes needed
 	if (config.voteBonus == 'VOTE') {
@@ -1211,8 +1238,8 @@ bot.on('speak', function (data) {
 	//Log in db (chatlog table)
 	if (config.useDatabase) {
 		client.query('INSERT INTO ' + config.CHAT_TABLE + ' '
-			+ 'SET user = ?, userid = ?, chat = ?, time = NOW()',
-			[data.name, data.userid, data.text]);
+			+ 'SET userid = ?, chat = ?, time = NOW()',
+			[data.userid, data.text]);
 	}
 
 	//If it's a supported command, handle it	
