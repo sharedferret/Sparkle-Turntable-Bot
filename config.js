@@ -53,6 +53,7 @@ exports.logConsoleEvents = false;	//Log room data in console
 // The implementation is included as a reference only.)
 exports.voteBonus       = 'VOTE';
 
+exports.respond         = true;     //Will respond to command calls in chat
 exports.autoRejoin       = true;	//Will re-join a room after being booted
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
