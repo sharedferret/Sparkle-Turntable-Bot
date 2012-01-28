@@ -234,6 +234,11 @@ bot.on('tcpConnect', function (socket) {
 
 //TCP message handling
 bot.on('tcpMessage', function (socket, msg) {
+	//If the message ends in a ^M character, remove it.
+    	if (msg.substring(msg.length - 1).match(/\cM/)) {
+        	msg = msg.substring(0, msg.length - 1);
+    	}
+	
 	//Have the bot speak in chat
 	if (msg.match(/^speak/)) {
 		bot.speak(msg.substring(6));
