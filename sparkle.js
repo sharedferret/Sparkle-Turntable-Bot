@@ -20,6 +20,7 @@ var mysql;
 var client;
 var request;
 var singalong;
+var enforcement;
 
 //Creates the bot listener
 try {
@@ -40,6 +41,16 @@ try {
 	process.exit(0);
 }
 
+//Loads the room rules
+try {
+    enforcement = require('./enforcement.js');
+} catch(e) {
+    console.log(e);
+    console.log('Ensure that enforcement.js is present in the directory.');
+    process.exit(0);
+}
+
+//Loads bot singalongs
 if (config.botSing) {
     try {
         singalong = require('./singalong.js');
@@ -89,15 +100,16 @@ if (config.useTCP) {
 
 //Room information
 var usersList = { };                //A list of users in the room
-var djs = { };                      //A list of current DJs
+var djs = new Array();                      //A list of current DJs
 
 //One and Down handlers
-var usertostep;                     //The userid of the DJ to step down
+var usertostep = null;                     //The userid of the DJ to step down
 var userstepped = false;            //A flag denoting if that user has stepped down
 var enforcementtimeout = new Date();//The time that the user stepped down
 var ffa = false;                    //A flag denoting if free-for-all mode is active
 var legalstepdown = true;           //A flag denoting if a user stepped up legally
 var pastdjs = new Array();          //An array of the past 4 DJs
+var djqueue = new Array();
 
 //Used for bonus awesoming
 var bonuspoints = new Array();      //An array of DJs wanting the bot to bonus
@@ -203,20 +215,21 @@ function getVoteTarget() {
 function canUserStep(name, userid) {
     //Case 1: DJ is already on the decks
     for (i in djs) {
-        if (djs[i] == userid) {
+        if (djs[i].id == userid) {
             found = true;
             return 'You\'re already up!';
         }
     }
     
     //Case 2: FFA
-    if (djs.length < 4) {
+    if (enforcement.multipleSpotFFA && (djs.length < 4)) {
         return 'There\'s more than one spot open, so anyone can step up!';
     }
     
     //Case 3: Longer than 10 seconds
-    if ((djs.length < 5) && ((new Date()).getTime() - enforcementtimeout > 10000)) {
-        return 'It\'s been 10 seconds, so anyone can step up!';
+    if (enforcement.timerFFA && (djs.length < 5)
+        && ((new Date()).getTime() - enforcementtimeout > (enforcement.timerFFATimeout * 1000))) {
+        return 'It\'s been ' + enforcement.timerFFATimeout + ' seconds, so anyone can step up!';
     }
     
     //Case 4: DJ in queue
@@ -266,6 +279,11 @@ function handleCommand(name, userid, text) {
     // Bonus points
     //--------------------------------------
     
+    case 'test':
+        console.log(djs);
+        console.log(djs[0].id);
+        break;
+    
     case 'tromboner':
     case 'meow':
     case 'bonus':
@@ -292,6 +310,23 @@ function handleCommand(name, userid, text) {
             }
         }
         break;
+        
+    case '/roll':
+        //Dice roll!
+        var roll = Math.ceil(Math.random() * 6);
+        if (config.voteBonus == 'DICE' && !bonusvote && (currentsong.djid == userid)) {
+            if (roll > 3) {
+                bot.speak(name + ', you rolled a ' + roll + ', BONUS!');
+                bot.vote('up');
+            } else {
+                bot.speak (name + ', you rolled a ' + roll +', bummer.');
+            }
+            bonusvote = true;
+        } else {
+            bot.speak(name + ', you rolled a ' + roll);
+        }
+            
+        break;
     
     //Checks the number of points cast for a song, as well as the number needed
     case 'points':
@@ -301,6 +336,8 @@ function handleCommand(name, userid, text) {
         } else if (config.voteBonus == 'CHAT') {
             var target = getTarget();
             bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+        } else if (config.voteBonus == 'DICE') {
+            bot.speak('The DJ must roll a 4 or higher using /roll to get a bonus.');
         }
         break;
     
@@ -315,7 +352,7 @@ function handleCommand(name, userid, text) {
     
     //Outputs github url for xxMEOWxx
 		case '.source':
-        bot.speak('My source code is available at: https://git.io/meow');
+        bot.speak('My source code is available at: http://git.io/meow');
         break;
 
     //Ping bot
@@ -346,9 +383,9 @@ function handleCommand(name, userid, text) {
     //Rules rehash since xxRAWRxx only responds to .rules
     //TODO: Generate rules based on bot options
 		case 'rules':
-			bot.speak('You can view the rules here: http://tinyurl.com/63hr2jl');
+			bot.speak('You can view the rules here: ' + enforcement.rulesLink);
 			setTimeout(function() {
-				bot.speak('No queue, fastest finger, play one song and step down');
+				bot.speak(enforcement.rules);
 			}, 600);
 			break;
             
@@ -397,7 +434,7 @@ function handleCommand(name, userid, text) {
     //Lists the DJs that must wait before stepping up (as per room rules)
     case 'waitdjs':
         if (config.oneDownEnforce) {
-            var pastdjnames = 'These DJs must wait before stepping up: ';
+            var pastdjnames = 'These DJs must wait before stepping up again: ';
             for (i in pastdjs) {
                 if (usersList[pastdjs[i].id] != null) {
                     pastdjnames += usersList[pastdjs[i].id].name
@@ -429,6 +466,42 @@ function handleCommand(name, userid, text) {
             bot.speak('Me too!');
         }, 1200);
         break;
+     
+    //--------------------------------------
+    // Queue/room enforcement commands
+    //--------------------------------------   
+    
+    case 'songsremaining':
+    case '.remaining':
+        var found = false;
+        for (i in djs) {
+            if (djs[i].id == userid) {
+                if (djs[i].remaining == 1) {
+                    bot.speak(name + ', you have one song remaining.');
+                } else {
+                    bot.speak(name + ', you have ' + djs[i].remaining + ' songs remaining.');
+                }
+                found = true;
+            }
+        }
+        if (!found) {
+            bot.speak(name + ', you\'re not DJing...');
+        }
+        break;
+        
+    case 'djinfo':
+        var response = '';
+        for (i in djs) {
+            response += usersList[djs[i].id].name + ' (' + djs[i].remaining + ' songs left), ';
+        }
+        bot.speak(response.substring(0, response.length - 2));
+        break;
+        
+    case 'any spots opening soon?': 
+        bot.speak('The next DJ to step down is ' + usersList[djs[0].id].name + ', who has '
+            + djs[0].remaining + ' songs remaining.');
+        break;
+    
         
     //--------------------------------------
     // Last.fm Queries
@@ -950,6 +1023,10 @@ bot.on('tcpMessage', function (socket, msg) {
                     config.voteBonus = 'VOTE';
                     socket.write('>> Bonus mode: VOTE');
                     break;
+                case 'dice':
+                    config.votebonus = 'DICE';
+                    socket.write('>> Bonus mode: DICE');
+                    break;
                 case 'chat':
                     config.voteBonus = 'CHAT';
                     socket.write('>> Bonus mode: CHAT');
@@ -1101,7 +1178,9 @@ bot.on('roomChanged', function(data) {
 	}
 
 	//Creates the dj list
-	djs = data.room.metadata.djs;
+	for (i in data.room.metadata.djs) {
+        djs.push({id: data.room.metadata.djs[i], remaining: enforcement.songsToPlay});
+    }
 	
     //If the bonus flag is set to VOTE, find the number of awesomes needed for
     //the current song
@@ -1121,8 +1200,8 @@ bot.on('roomChanged', function(data) {
     //since the last time we've seen them
     
     for (i in users) {
-        client.query('INSERT INTO ' + config.USER_TABLE + ' SET userid = ?, username = ?, '
-            + 'lastseen = NOW() ON DUPLICATE KEY UPDATE lastseen = NOW()',
+        client.query('INSERT INTO ' + config.USER_TABLE + ' (userid, username, lastseen)'
+            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
             [users[i].userid, users[i].name]);
     }
 	
@@ -1182,8 +1261,8 @@ bot.on('registered',   function (data) {
 	usersList[user.userid] = user;
     
     //Add user to user table
-    client.query('INSERT INTO ' + config.USER_TABLE + ' SET userid = ?, username = ?, '
-        + 'lastseen = NOW() ON DUPLICATE KEY UPDATE lastseen = NOW()',
+    client.query('INSERT INTO ' + config.USER_TABLE + ' (userid, username, lastseen)'
+        + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
         [user.userid, user.name]);
 	
     //If the bonus flag is set to VOTE, find the number of awesomes needed
@@ -1272,8 +1351,17 @@ bot.on('endsong', function (data) {
     }
     
 	//Used for room enforcement
-	userstepped = false;
-	usertostep = currentsong.djid;
+    if (config.oneDownEnforce) {
+        for (i in djs) {
+            if (djs[i].id == currentsong.djid) {
+                djs[i].remaining--;
+                if (djs[i].remaining <= 0) {
+                    userstepped = false;
+                    usertostep = currentsong.djid;
+                }
+            }
+        }
+    }
     
 
 	//Report song stats in chat
@@ -1334,7 +1422,7 @@ bot.on('newsong', function (data) {
     }
     
     //If the botSing is enabled, see if there are any lyrics for this song
-    if (console.botSing) {
+    if (config.botSing) {
         //Try to find lyrics from singalong.js
         var lyrics = singalong.getLyrics(currentsong.artist, currentsong.song);
         if (lyrics != null) {
@@ -1389,13 +1477,13 @@ bot.on('rem_dj', function (data) {
 
 	//Remove from dj list
 	for (i in djs) {
-		if (djs[i] == data.user[0].userid) {
+		if (djs[i].id == data.user[0].userid) {
 			djs.splice(i, 1);
 		}
 	}
     
     //If more than one DJ spot is open, set free-for-all mode to true
-    if (config.oneDownEnforce) {
+    if (config.oneDownEnforce && enforcement.multipleSpotFFA) {
         ffa = (djs.length < 4);
     }
 });
@@ -1407,7 +1495,7 @@ bot.on('add_dj', function(data) {
 	if (config.logConsoleEvents) {
 		console.log('Stepped up: ' + data.user[0].name);
 	}
-	djs[djs.length] = data.user[0].userid;
+    djs.push({id: data.user[0].userid, remaining: enforcement.songsToPlay});
     
     //See if this user is in the past djs list
     if (config.oneDownEnforce) {
