@@ -1422,6 +1422,9 @@ bot.on('endsong', function (data) {
         if (enforcement.waitType == 'SONGS') {
             for (i in pastdjs) {
                 pastdjs[i].wait--;
+                if (pastdjs[i].wait <= 1) {
+                    pastdjs.splice(i, 1);
+                }
             }
         //If enforcement type is minutes, remove dj from pastdjs list if they can step up
         } else if (enforcement.waitType == 'MINUTES') {
@@ -1675,11 +1678,14 @@ bot.on('booted_user', function(data) {
 		}, 27000);
 	}
 });
-    
+ 
+/**
 bot.on('update_user', function(data) {
     //Update user name in users table
-    client.query('INSERT INTO ' + config.DATABASE + '.' + config.USER_TABLE
-        + ' (userid, username, lastseen)'
-            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-            [data.userid, data.name]);
-});
+    if (data.name != null) {
+        client.query('INSERT INTO ' + config.DATABASE + '.' + config.USER_TABLE
+            + ' (userid, username, lastseen)'
+                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+                [data.userid, data.name]);
+        }
+});*/
