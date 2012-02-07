@@ -1422,7 +1422,10 @@ bot.on('endsong', function (data) {
         if (enforcement.waitType == 'SONGS') {
             for (i in pastdjs) {
                 pastdjs[i].wait--;
-                if (pastdjs[i].wait <= 1) {
+            }
+            
+            for (i in pastdjs) {
+                if (pastdjs[i].wait < 1) {
                     pastdjs.splice(i, 1);
                 }
             }
