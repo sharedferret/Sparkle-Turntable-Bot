@@ -776,7 +776,7 @@ function handleCommand(name, userid, text) {
             client.query('SELECT @rank := rank FROM (SELECT @rownum := @rownum + 1 AS '
                 + 'rank, djid, POINTS FROM (SELECT djid, sum(up) as POINTS from '
                 + config.DATABASE + '.' + config.SONG_TABLE
-                + 'group by djid order by sum(up) desc) as test) as rank where '
+                + ' group by djid order by sum(up) desc) as test) as rank where '
                 + 'djid like \'' + userid + '\'');
             //This statement grabs the rank from the previous query, and gets the total songs
             //played, total awesomes, lames, and averages
