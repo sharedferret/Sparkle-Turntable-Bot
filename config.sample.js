@@ -59,6 +59,6 @@ exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
 exports.welcomeGreeting = 'Hi, ';	//Greeting for users
 exports.ownerResponse   = 'sharedferret is my owner!'; //Owner response
-exports.oneDownEnforce  = true;		//Enforce a One & Down room policy
+exports.roomEnforce     = true;		//Enforce a One & Down room policy
 exports.botSing			= false;	//Bot sings parts of certain songs
 exports.uselastfmAPI    = false;	//Use the last.fm API for certain calls
