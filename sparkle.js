@@ -269,8 +269,91 @@ function canUserStep(name, userid) {
     return (name + ', go ahead!');
 }
 
+<<<<<<< HEAD
 //Handles chat commands
 function handleCommand(name, userid, text) {
+=======
+//Welcome message for TCP connection
+bot.on('tcpConnect', function (socket) {
+	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
+});
+
+//TCP message handling
+bot.on('tcpMessage', function (socket, msg) {
+	//If the message ends in a ^M character, remove it.
+    	if (msg.substring(msg.length - 1).match(/\cM/)) {
+        	msg = msg.substring(0, msg.length - 1);
+    	}
+	
+	//Have the bot speak in chat
+	if (msg.match(/^speak/)) {
+		bot.speak(msg.substring(6));
+		socket.write('>> Message sent\n');
+	}
+	
+	//Boot the given userid
+	//TODO: Change userid to user name
+	if (msg.match(/^boot/)) {
+		bot.boot(msg.substring(5));
+        socket.write('>> User booted\n');
+	}
+	
+	//Handle commands
+	switch (msg) {
+		case 'help':
+			socket.write('>> xxMEOWxx responds to the following commands in the console: '
+				+ 'online, .a,\n'
+                + '>> .l, step up, step down, speak [text], exit, shutdown\n');
+			break;
+		case 'online':
+			socket.write('>> ' + currentsong.listeners + '\n');
+			break;
+		case 'users':
+			var output = '>> ';
+			for (var i in usersList) {
+				output += (usersList[i].name) + ', ';
+			}
+			socket.write(output.substring(0,output.length - 2) + '\n');
+			break;
+		case 'nowplaying':
+			socket.write('>> ' + currentsong.artist + ' - ' + currentsong.song
+				+ '\n>> DJ ' + currentsong.djname + ' +' + currentsong.up 
+				+ ' -' + currentsong.down + '\n');
+			break;
+		case '.a':
+			bot.vote('up');
+			socket.write('>> Awesomed\n');
+			break;
+		case '.l':
+			bot.vote('down');
+			socket.write('>> Lamed\n');
+			break;
+		case 'step up':
+			bot.addDj();
+			socket.write('>> Stepped up\n');
+			break;
+		case 'step down':
+			bot.remDj(config.USERID);
+			socket.write('>> Stepped down\n');
+			break;
+		case 'pulldj':
+			bot.remDj(usertostep);
+			socket.write('>> DJ removed\n');
+			break;
+		case 'exit':
+			socket.write('>> Goodbye!\n');
+			socket.end();
+			break;
+		case 'shutdown':
+			socket.write('>> Shutting down...\n');
+			bot.speak('Shutting down...');
+			socket.end();
+			bot.roomDeregister();
+			process.exit(0);
+			break;
+		}
+});
+>>>>>>> 85be4060cdab4f72a07d3042c38a39b06dbaca66
 
     switch(text) {
     //--------------------------------------
