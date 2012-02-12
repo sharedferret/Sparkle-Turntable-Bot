@@ -21,6 +21,7 @@ var client;
 var request;
 var singalong;
 var enforcement;
+var uptime = new Date();
 
 //Creates the bot listener
 try {
@@ -243,13 +244,13 @@ function canUserStep(name, userid) {
     //The bot will tell the user how much longer they must wait
     for (i in pastdjs) {
         if (pastdjs[i].id == userid) {
-            if (enforcement.waitType == 'SONGS') {
+            if (enforcement.waitType == 'SONGS' && enforcement.waitToStepUp) {
                 if (pastdjs[i].wait == 1) {
                     return (name + ', please wait one more song.');
                 } else {
                     return (name + ', please wait another ' + pastdjs[i].wait + ' songs.');
                 }
-            } else if (enforcement.waitType == 'MINUTES') {
+            } else if (enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp) {
                 var timeremaining = (enforcement.wait * 60000)
                     - (new Date().getTime() - pastdjs[i].wait.gettime());
                 
@@ -525,6 +526,22 @@ function handleCommand(name, userid, text) {
                 + djs[0].remaining + ' songs remaining.');
         }
         break;
+        
+    case 'uptime':
+        var cur = new Date().getTime() - uptime.getTime();
+        var days = Math.floor(cur / 86400000);
+        cur = cur % 86400000;
+        var hours = Math.floor(cur / 3600000);
+        cur = cur % 3600000;
+        var minutes = Math.floor(cur / 60000);
+        cur = cur % 60000;
+        var response = 'Uptime: ';
+        if (days > 0) {
+            response += days + ' days, ';
+        }
+        bot.speak(response + hours + ' hours, ' + minutes + ' minutes, '
+                + Math.floor(cur/1000) + ' seconds.');
+        break;
     
         
     //--------------------------------------
@@ -641,10 +658,9 @@ function handleCommand(name, userid, text) {
             client.query('SELECT username, upvotes FROM (SELECT djid, sum(up) as upvotes '
                 + 'FROM ' + config.DATABASE + '.' + config.SONG_TABLE
                 + ' WHERE started > DATE_SUB(NOW(), INTERVAL '
-                + '1 DAY) GROUP BY djid) a INNER JOIN (SELECT * FROM ' + config.DATABASE + '.' 
-                + config.USER_TABLE
-                + ' GROUP BY userid ORDER BY lastseen DESC) b ON a.djid = b.userid ORDER BY '
-                + 'upvotes DESC LIMIT 3',
+                + '1 DAY) GROUP BY djid ORDER BY sum(up) DESC LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
+                 + config.DATABASE + '.' + config.USER_TABLE
+                + ' ORDER BY lastseen DESC) as test GROUP BY userid) b ON a.djid = b.userid LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'DJs with the most points in the last 24 hours: ';
                     for (i in results) {
@@ -661,10 +677,10 @@ function handleCommand(name, userid, text) {
         if (config.useDatabase) {
             client.query('SELECT username, upvotes FROM (SELECT djid, sum(up) AS upvotes '
                 + 'FROM ' + config.DATABASE + '.' + config.SONG_TABLE
-                + ' GROUP BY djid) a INNER JOIN (SELECT * '
-                + 'FROM ' + config.DATABASE + '.' + config.USER_TABLE
-                + ' GROUP BY userid ORDER BY lastseen DESC)'
-                + ' b ON a.djid = b.userid ORDER BY upvotes DESC LIMIT 3',
+                + ' GROUP BY djid ORDER BY sum(up) DESC LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
+                 + config.DATABASE + '.' + config.USER_TABLE
+                + ' ORDER BY lastseen DESC) as test GROUP BY userid)'
+                + ' b ON a.djid = b.userid LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most points accrued in this room: ';
                     for (i in results) {
@@ -681,10 +697,10 @@ function handleCommand(name, userid, text) {
         if (config.useDatabase) {
             client.query('SELECT username, downvotes FROM (SELECT djid, sum(down) AS downvotes '
                 + 'FROM ' + config.DATABASE + '.' + config.SONG_TABLE
-                + ' GROUP BY djid) a INNER JOIN (SELECT * '
-                + 'FROM ' + config.DATABASE + '.' + config.USER_TABLE
-                + ' GROUP BY userid ORDER BY lastseen DESC)'
-                + ' b ON a.djid = b.userid ORDER BY downvotes DESC LIMIT 3',
+                + ' GROUP BY djid ORDER BY sum(down) LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
+                 + config.DATABASE + '.' + config.USER_TABLE
+                + ' ORDER BY lastseen DESC) as test GROUP BY userid)'
+                + ' b ON a.djid = b.userid LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most lames accrued in this room: ';
                     for (i in results) {
@@ -859,6 +875,22 @@ function handleCommand(name, userid, text) {
         }
         break;
         
+    case 'catfact':
+    case '.catfact':
+    case 'catfacts':
+    case '.catfacts':
+    case 'cat fact':
+    case 'cat facts':
+        if (config.useDatabase) {
+            client.query('SELECT * FROM CATFACTS ORDER BY RAND() LIMIT 1',
+                function selectCb(error, results, fields) {
+                    if (results[0] != null) {
+                        bot.speak(results[0]['fact']);
+                    }
+            });
+        }
+        break;
+        
     //--------------------------------------
     // Admin-only commands
     //--------------------------------------
@@ -936,7 +968,16 @@ function handleCommand(name, userid, text) {
             bot.roomDeregister();
             process.exit(0);
         }
-        
+        break;
+    
+    //Restarts bot (if keepalive script is used)
+    case 'meow, restart':
+        if (userid == config.MAINADMIN) {
+            bot.speak('Back in 10 seconds! Rebooting...');
+            bot.roomDeregister();
+            process.exit(1);
+        }
+        break;
     }
     
     //--------------------------------------
@@ -983,6 +1024,7 @@ function handleCommand(name, userid, text) {
     //Uses YQL
 	if(text.match(/^.find/)) {
 		var location = text.split(' ', 2);
+        if (location[1] != null) {
 		var thingToFind = text.substring(7 + location[1].length);
 		request('http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20local.search'
 			+'%20where%20zip%3D\'' + encodeURIComponent(location[1]) + '\'%20and%20query%3D\''
@@ -1004,6 +1046,7 @@ function handleCommand(name, userid, text) {
 					}
 				}
 		});
+        }
 	}
 
 	//Returns a list of names a user has gone by
@@ -1137,6 +1180,13 @@ bot.on('tcpMessage', function (socket, msg) {
 			bot.remDj(usertostep);
 			socket.write('>> DJ removed\n');
 			break;
+        case 'restart':
+            socket.write('>> Rebooting...\n');
+            bot.speak('Back in 10 seconds! Rebooting...');
+            socket.end();
+            bot.roomDeregister();
+            process.exit(1);
+            break;
 		case 'exit':
 			socket.write('>> Goodbye!\n');
 			socket.end();
@@ -1419,7 +1469,7 @@ bot.on('endsong', function (data) {
         }
         
         //If enforcement type is songs, decrease the song-wait count for all past djs
-        if (enforcement.waitType == 'SONGS') {
+        if (enforcement.waitType == 'SONGS' && enforcement.waitToStepUp) {
             for (i in pastdjs) {
                 pastdjs[i].wait--;
             }
@@ -1430,7 +1480,7 @@ bot.on('endsong', function (data) {
                 }
             }
         //If enforcement type is minutes, remove dj from pastdjs list if they can step up
-        } else if (enforcement.waitType == 'MINUTES') {
+        } else if (enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp) {
             for (i in pastdjs) {
                 //Checks if the user has waited long enough
                 //enforcement.wait is converted from minutes to milliseconds
@@ -1531,18 +1581,18 @@ bot.on('rem_dj', function (data) {
         
         if (config.roomEnforce) {
             //When a user steps, add them to the past djs array
-            if (enforcement.waitType == 'SONGS') {
+            if (enforcement.waitType == 'SONGS' && enforcement.waitToStepUp) {
                 pastdjs.push({id: data.user[0].userid, wait: enforcement.wait});
-            } else if (enforcement.waitType == 'MINUTES') {
+            } else if (enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp) {
                 pastdjs.push({id: data.user[0].userid, wait: new Date()});
             
             //If a DJ is now eligible to step up, remove them from the list
             for (i in pastdjs) {
-                if (enforcement.waitType == 'SONGS') {
+                if (enforcement.waitType == 'SONGS' && enforcement.waitToStepUp) {
                     if (pastdjs[i].wait < 1) {
                         pastdjs.splice(i, 1);
                     }
-                } else if (enforcement.waitType == 'MINUTES') {
+                } else if (enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp) {
                     if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
                         (enforcement.wait * 60000)) {
                         pastdjs.splice(i, 1);
@@ -1610,7 +1660,8 @@ bot.on('add_dj', function(data) {
                     }
                 }
             } 
-            else if ((enforcement.waitType == 'MINUTES') && (new Date().getTime() 
+            else if ((enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp)
+                && (new Date().getTime() 
                 - pastdjs[i].wait.getTime()) > (enforcement.wait * 60000)) {
                 pastdjs.splice(i, 1);
             }
@@ -1619,11 +1670,11 @@ bot.on('add_dj', function(data) {
                 bot.remDj(data.user[0].userid);
                 for (i in pastdjs) {
                     if(pastdjs[i].id == data.user[0].userid) {
-                        if (enforcement.waitType == 'SONGS') {
+                        if (enforcement.waitType == 'SONGS' && enforcement.waitToStepUp) {
                         bot.speak(data.user[0].name + ', please wait ' + pastdjs[i].wait
                             + ' more songs or ' + (10 - Math.floor(waittime/1000))
                             + ' more seconds before DJing again.');
-                        } else if (enforcement.waitType == 'MINUTES') {
+                        } else if (enforcement.waitType == 'MINUTES' && enforcement.waitToStepUp) {
                         var timeremaining = (enforcement.wait * 60000)
                             - (new Date().getTime() - pastdjs[i].wait.getTime());
                         
