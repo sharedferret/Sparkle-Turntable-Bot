@@ -399,7 +399,7 @@ bot.on('tcpMessage', function (socket, msg) {
             bonuspoints.push(name);
             var target = getTarget();
             //If the target has been met, the bot will awesome
-            if((bonuspoints.length >= target) && !bonusvote) {
+            if((bonuspoints.length >= target) && !bonusvote && (currentsong.djid != config.USERID)) {
                 bot.speak('Bonus!');
                 bot.vote('up');
                 bonusvote = true;
@@ -1406,7 +1406,7 @@ bot.on('update_votes', function (data) {
 	
     //If the vote exceeds the bonus threshold and the bot's bonus mode
     //is set to VOTE, give a bonus point
-	if ((config.voteBonus == 'VOTE') && !bonusvote) {
+	if ((config.voteBonus == 'VOTE') && !bonusvote && (currentsong.djid != config.USERID)) {
 		if (currentsong.up >= bonusvotepoints) {
 			bot.vote('up');
 			bot.speak('Bonus!');
@@ -1625,7 +1625,7 @@ bot.on('newsong', function (data) {
 	bonuspoints = new Array();
 	if (config.voteBonus == 'VOTE') {
 		bonusvotepoints = getVoteTarget();
-	} else if (config.voteBonus == 'AUTO') {
+	} else if (config.voteBonus == 'AUTO' && (currentsong.djid != config.USERID)) {
         var randomwait = Math.floor(Math.random() * 20) + 4;
         setTimeout(function() {
             bot.vote('up');
@@ -1787,7 +1787,7 @@ bot.on('snagged', function(data) {
 	}
 	
 	var target = getTarget();
-	if((bonuspoints.length >= target) && !bonusvote && (config.voteBonus == 'CHAT')) {
+	if((bonuspoints.length >= target) && !bonusvote && (config.voteBonus == 'CHAT') && (currentsong.djid != config.USERID)) {
 		bot.speak('Bonus!');
 		bot.vote('up');
 		bot.snag();
