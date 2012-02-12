@@ -41,12 +41,25 @@ exports.lastfmkey = '#####';
 
 //Flags
 exports.logConsoleEvents = false;	//Log room data in console
-exports.voteBonus	      = true;	//Bot awesomes if % in room is high enough
+exports.roomEnforce     = true;		//Enforce a room policy
+                                    //Set enforcement options in enforcement.js
+exports.respond         = true;     //Will respond to command calls in chat
 exports.autoRejoin       = true;	//Will re-join a room after being booted
 exports.reportSongStats = true;		//Reports song stats in chat after each song
 exports.welcomeUsers    = true;		//Welcomes users in chat
 exports.welcomeGreeting = 'Hi, ';	//Greeting for users
 exports.ownerResponse   = 'sharedferret is my owner!'; //Owner response
-exports.oneDownEnforce  = true;		//Enforce a One & Down room policy
+
 exports.botSing			= false;	//Bot sings parts of certain songs
 exports.uselastfmAPI    = false;	//Use the last.fm API for certain calls
+
+//Vote bonus options: NONE, VOTE, CHAT, AUTO
+//This flag tells the bot when to awesome a song
+//NONE: The bot will never awesome
+//VOTE: The bot awesomes when a vote threshold is met (# of awesomes)
+//CHAT: The bot awesomes when enough people say a bonus phrase
+//AUTO: The bot auto-awesomes
+//(Note: Turntable.fm does not allow bots to auto-awesome. If you set
+// your bot to auto-awesome, it is likely that the bot will be deleted.
+// The implementation is included as a reference only.)
+exports.voteBonus       = 'VOTE';

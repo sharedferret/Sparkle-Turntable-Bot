@@ -4,6 +4,20 @@ A customizable Turntable.fm bot.
 
 This is still early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms.
 
+## roomenforcement Branch
+
+This is the roomenforcement dev branch for the bot.
+
+Goals for this branch:
+
+* Set up "bonus" modes - NONE, VOTE, CHAT, AUTO
+* Set up customizable modes of room rules enforcement
+ - One and Down
+ - Two and Down
+ - etc.
+
+If you're just trying to get a bot set up, using the build in the master branch is recommended.
+
 ## Installation
 
 To run the bot, you'll need the following installed:
