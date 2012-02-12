@@ -269,10 +269,6 @@ function canUserStep(name, userid) {
     return (name + ', go ahead!');
 }
 
-<<<<<<< HEAD
-//Handles chat commands
-function handleCommand(name, userid, text) {
-=======
 //Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
 	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
@@ -353,8 +349,9 @@ bot.on('tcpMessage', function (socket, msg) {
 			break;
 		}
 });
->>>>>>> 85be4060cdab4f72a07d3042c38a39b06dbaca66
 
+//Handles chat commands
+function handleCommand(name, userid, text) {
     switch(text) {
     //--------------------------------------
     // Command lists
@@ -741,9 +738,10 @@ bot.on('tcpMessage', function (socket, msg) {
             client.query('SELECT username, upvotes FROM (SELECT djid, sum(up) as upvotes '
                 + 'FROM ' + config.DATABASE + '.' + config.SONG_TABLE
                 + ' WHERE started > DATE_SUB(NOW(), INTERVAL '
-                + '1 DAY) GROUP BY djid ORDER BY sum(up) DESC LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
+                + '1 DAY) GROUP BY djid) a INNER JOIN (SELECT * FROM (SELECT * FROM '
                  + config.DATABASE + '.' + config.USER_TABLE
-                + ' ORDER BY lastseen DESC) as test GROUP BY userid) b ON a.djid = b.userid LIMIT 3',
+                + ' ORDER BY lastseen DESC) as test GROUP BY userid) b ON a.djid = b.userid'
+                + ' ORDER BY upvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'DJs with the most points in the last 24 hours: ';
                     for (i in results) {
@@ -763,7 +761,7 @@ bot.on('tcpMessage', function (socket, msg) {
                 + ' GROUP BY djid ORDER BY sum(up) DESC LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
                  + config.DATABASE + '.' + config.USER_TABLE
                 + ' ORDER BY lastseen DESC) as test GROUP BY userid)'
-                + ' b ON a.djid = b.userid LIMIT 3',
+                + ' b ON a.djid = b.userid ORDER BY upvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most points accrued in this room: ';
                     for (i in results) {
@@ -780,10 +778,10 @@ bot.on('tcpMessage', function (socket, msg) {
         if (config.useDatabase) {
             client.query('SELECT username, downvotes FROM (SELECT djid, sum(down) AS downvotes '
                 + 'FROM ' + config.DATABASE + '.' + config.SONG_TABLE
-                + ' GROUP BY djid ORDER BY sum(down) LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
+                + ' GROUP BY djid ORDER BY sum(down) DESC LIMIT 3) a INNER JOIN (SELECT * FROM (SELECT * FROM '
                  + config.DATABASE + '.' + config.USER_TABLE
                 + ' ORDER BY lastseen DESC) as test GROUP BY userid)'
-                + ' b ON a.djid = b.userid LIMIT 3',
+                + ' b ON a.djid = b.userid ORDER BY downvotes DESC LIMIT 3',
                 function select(error, results, fields) {
                     var response = 'The DJs with the most lames accrued in this room: ';
                     for (i in results) {
