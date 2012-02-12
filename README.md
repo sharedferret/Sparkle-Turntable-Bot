@@ -16,7 +16,12 @@ To run the bot, you'll need the following installed:
 
 ## Run
 
-Before running, make sure the config.js file is filled out with your bot account's userid, auth code, the target room id, as well as the admin id info (the admins array can be scaled up or down depending on the number of admins you want to have full control of the bot). Additionally, ensure that a mysql server instance is running on your machine, or that the exports.useDatabase value in config.js is set to FALSE.
+* Fill out the config.js file with your bot account's user ID, auth code, target room ID, admin ID info, and other options
+	- If you do not plan to use the database features or do not want to install mysql, set exports.useDatabase to FALSE
+* If you set the roomEnforcement flag, set the enforcement options for your room in enforcement.js
+* If you plan on using a database, create new tables using the .sql files provided (the songlist, userlist, and chatlog tables will be created for you)
+
+Finally, run your bot using the following command in a console/terminal/command prompt:
 
 	node sparkle.js
 
@@ -209,3 +214,7 @@ These commands can be performed via TCP access to the bot.
 * exit - Ends the TCP connection.
 
 * shutdown - Initiates the bot's shutdown sequence.
+
+## Help
+
+If you have a nontrivial question (please don't ask me how to install node.js or the MySQL community server), feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
