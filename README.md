@@ -45,6 +45,7 @@ The bot can awesome songs based on one of four modes. These modes can be set in 
 * NONE: The bot will never awesome
 * VOTE: The bot awesomes when a vote threshold is met (# of awesomes)
 * CHAT: The bot awesomes when enough people say a bonus phrase
+* DICE: The bot awesomes if the current DJ rolls a 4 or higher using /roll
 * AUTO: The bot auto-awesomes
 
 ### Room enforcement
