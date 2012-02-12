@@ -62,6 +62,11 @@ The bot can enforce a variety of room rules, including:
 The bot uses a mysql database to log/retrieve some information. The bot can log song data, user information (id/name), and keep a chatlog.
 This project includes several .sql files (currently, these files contain a list of cat facts and holidays). If you enable the useDatabase flag, be sure to create new tables in your bot's database using these .sql files.
 
+### Planned
+
+* A waitlist implementation
+* Graphical frontend to set config options
+
 ## Commands
 
 The bot will respond to these commands in chat in a Turntable.fm room.
