@@ -1,7 +1,7 @@
 /**
  *  sparkle.js
  *  Author: sharedferret
- *  Version: [dev] 2012.03.06
+ *  Version: [stable] 2012.02.12
  *  
  *  A Turntable.fm bot for the Indie/Classic Alternative 1 + Done room.
  *  Based on bot implementations by anamorphism and heatvision
