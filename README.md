@@ -4,20 +4,6 @@ A customizable Turntable.fm bot.
 
 This is still early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms.
 
-## roomenforcement Branch
-
-This is the roomenforcement dev branch for the bot.
-
-Goals for this branch:
-
-* Set up "bonus" modes - NONE, VOTE, CHAT, AUTO
-* Set up customizable modes of room rules enforcement
- - One and Down
- - Two and Down
- - etc.
-
-If you're just trying to get a bot set up, using the build in the master branch is recommended.
-
 ## Installation
 
 To run the bot, you'll need the following installed:
@@ -34,32 +20,64 @@ Before running, make sure the config.js file is filled out with your bot account
 
 	node sparkle.js
 
+A keepalive shell script is included to allow the bot to run permanently. (Note: if you use this, do watch the nohup.out file to ensure the bot is continuing to work properly)
+
+	nohup ./sparkle.sh &
+	
+
 ## Features
 
 The bot can: 
 
 * Respond to a set of commands
-* Awesome songs based on a "bonus point" system
+* Awesome songs based on various systems
 * Log vote, chat, song, room events in the console
 * Report song stats in chat after each song
 * Welcome users to the room
-* Enforce a "one and down" room policy
+* Enforce room rules regarding song limits and timeouts before a person can DJ again
 * Log song statistics and chat entries in a mysql database
 * Receive instructions via TCP
+
+### Song Awesomeing
+
+The bot can awesome songs based on one of four modes. These modes can be set in the config.js file prior to running the bot.
+
+* NONE: The bot will never awesome
+* VOTE: The bot awesomes when a vote threshold is met (# of awesomes)
+* CHAT: The bot awesomes when enough people say a bonus phrase
+* AUTO: The bot auto-awesomes
+
+### Room enforcement
+
+The bot can enforce a variety of room rules, including:
+
+* How many songs a DJ can play before they must step down
+* How long a DJ must wait (songs or time) before stepping up again
+* Whether those DJs can step up again if multiple DJ spots are open
+* Whether those DJs can step up again if a spot is open for a certain amount of time
+
+### Database
+
+The bot uses a mysql database to log/retrieve some information. The bot can log song data, user information (id/name), and keep a chatlog.
+This project includes several .sql files (currently, these files contain a list of cat facts and holidays). If you enable the useDatabase flag, be sure to create new tables in your bot's database using these .sql files.
 
 ## Commands
 
 The bot will respond to these commands in chat in a Turntable.fm room.
 
+### User commands
+
 * .sparklecommands - Displays a list of commands supported by this bot.
 
 * help, commands - Displays a list of commands available in the Indie/Classic Alt 1+Done room	
 
-* bonus - Adds a bonus point to a song. When a song has enough bonus points, the bot will awesome.
+* bonus - Adds a bonus point to a song (if enabled). When a song has enough bonus points, the bot will awesome.
           Other phrases that add a bonus point: tromboner, meow, /bonus, good song, great song, nice pick,
           good pick, great pick, dance, /dance
 
-* .users - Displays a list of users in the room.
+* points - Displays what is needed for the bot to awesome the song (number of awesomes, points, etc).
+
+* /roll - Dice roll
 
 * CAN YOU FEEL IT!? - Bot responds with "YES I CAN FEEL IT!"
 
@@ -77,11 +95,27 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 
 * hugs meow - Hugs the issuing user back in chat.
 
+* platforms - Lists the number of users on each platform (PC/Mac/Linux/iPhone/Chrome) in the room.
+
+* songinfo - Displays mid-song stats (awesomes, lames, snags). Useful for iPhone users.
+
 * .similar - Gives three similar songs to the one playing using last.fm's database.
 
 * .similarartists - Gives four similar artists to the one playing using last.fm's database.
 
 * platforms - Returns the number of each type of computer (pc, linux, mac, chrome, iPhone) in the room.
+
+### Room enforcement commands
+
+* waitdjs - Displays a list of DJs that must wait before stepping up again, and how long they must wait.
+
+* .remaining, songsremaining - Shows a DJ how many songs they have remaining before they must step down.
+
+* djinfo - Displays a list of current DJs and how many songs they have remaining before they must step down.
+
+* any spots opening soon?, anyone stepping down soon? - Displays the next DJ to step down, and how many songs they have remaining.
+
+### User database queries
 
 * stats - Gives overall room statistics (number of songs played, number of awesomes/lames, averages).
 
@@ -111,6 +145,10 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 
 * dbsize - Returns the number of songs logged in the database.
 
+* catfact, .catfact, catfacts - Returns a cat fact!
+
+### Commands with parameters
+
 * .weather [zip] - Returns the current weather conditions at the specified zip code. This call uses the Yahoo! YQL service.
 	Note: This service is rate-limited to 1,000 calls per hour.
 
@@ -124,21 +162,21 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 
 These commands can only be performed by admins of the bot.
 
-* .a
-* awesome - Tells the bot to awesome the current song.
+* .a - Tells the bot to awesome the current song.
 
-* .l
-* lame - Tells the bot to lame the current song.
+* .l - Tells the bot to lame the current song.
 
 * pulldj - Pulls a DJ off stage after their song.
 
 * pullcurrent - Pulls the current DJ off stage during their song.
 
-* Meow, step up - The bot steps up to DJ.
+* meow, step up - The bot steps up to DJ.
 
-* Meow, step down - The bot steps down from the decks.
+* meow, step down - The bot steps down from the decks.
 
-* Meow, shut down - The bot shuts down, terminating the process.
+* meow, shut down - The bot shuts down, terminating the process.
+
+* meow, restart - If running through the .sh script, the bot will restart. Otherwise, the bot will shut down.
 
 ## TCP Commands
 
