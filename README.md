@@ -4,6 +4,19 @@ A customizable Turntable.fm bot.
 
 This is still early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms.
 
+## Experimental Branch
+
+This branch is used for development, and builds from this branch may not be stable. If you're just starting out, I'd recommend using the master branch.
+
+Goals for this branch:
+
+* Convert config.js and enforcement.js files to JSON k/v files
+* Allow the bot to run using SQLite in addition to mysql
+* Find a better way to store command response code
+* Completely redo HTTP and/or TCP connections to be able to send/receive commands/config info/etc
+* Prepare bot to work with frontend application
+* [Long-term] Front-end helper application for Windows, OSX, iOS to modify config information, see the status of the bot/room, and other features
+
 ## Installation
 
 To run the bot, you'll need the following installed:
