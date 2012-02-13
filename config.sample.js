@@ -24,6 +24,7 @@ exports.useDatabase   = true;
 exports.DATABASE      = 'nodejs_mysql_sparkle';
 exports.SONG_TABLE    = 'SONGLIST';
 exports.CHAT_TABLE    = 'CHATLOG';
+exports.USER_TABLE    = 'USERS';
 exports.HOLIDAY_TABLE = 'HOLIDAY_GREETINGS';
 exports.DBLOGIN       =  {
 	user: '#####',
