@@ -14,7 +14,7 @@
  *
 */
 
-var version = '[experimental] 2012.02.12';
+var version = '[experimental] 2012.02.16';
 
 var fs = require('fs');
 
@@ -267,11 +267,92 @@ function canUserStep(name, userid) {
 //Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
 	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
+    console.log(socket);
 });
 
 //TCP message handling
 bot.on('tcpMessage', function (socket, msg) {
-	//If the message ends in a ^M character, remove it.
+    var jsonmsg;
+    try {
+        jsonmsg = JSON.parse(msg);
+    } catch (e) {
+        return;
+    }
+    
+    var response = {response: 'INVALID QUERY'};
+    if (jsonmsg.command != null) {
+        switch (jsonmsg.command) {
+        
+            //Get commands
+            case 'online':
+                response = {response: 'online', value: currentsong.listeners};
+                break;
+                
+            case 'users': 
+                response = {response: 'users', value: usersList};
+                break;
+                
+            case 'uptime':
+                response = {response: 'uptime', value: uptime};
+                break;
+            
+            case 'currentsong':
+                response = {response: 'currentsong', value: currentsong};
+                break;
+                
+            case 'speak':
+                bot.speak(jsonmsg.parameter);
+                response = {response: 'speak', value: true};
+                break;
+                
+            case 'boot':
+                bot.boot(jsonmsg.parameter);
+                response = {response: 'boot', value: true};
+                break;
+            
+            case 'getconfig':
+                response = {response: 'getconfig', value: config};
+                break;
+            
+            case 'vote':
+                if (jsonmsg.parameter == 'up') {
+                    bot.vote('up');
+                } else if (jsonmsg.parameter == 'down') {
+                    bot.vote('down');
+                }
+                break;
+                
+            case 'stepup':
+                bot.addDj();
+                break;
+            
+            case 'stepdown':
+                bot.remDj(config.botinfo.userid);
+                break;
+                
+            case 'pulldj':
+                bot.remDj(usertostep);
+                break;
+                
+            case 'exit':
+                socket.end();
+                break;
+                
+            //Database get commands
+            
+            //Set commands
+            case 'setconfig':
+                //Authenticate using jsonmsg.login.username, jsonmsg.login.password
+                var newconfig = jsonmsg.parameter;
+                config = newconfig;
+                response = {response: 'setconfig', value: config};
+                break;
+        }
+    }
+    socket.write(JSON.stringify(response));
+    
+    /**
+    //If the message ends in a ^M character, remove it.
     	if (msg.substring(msg.length - 1).match(/\cM/)) {
         	msg = msg.substring(0, msg.length - 1);
     	}
@@ -342,7 +423,7 @@ bot.on('tcpMessage', function (socket, msg) {
 			bot.roomDeregister();
 			process.exit(0);
 			break;
-		}
+		}*/
 });
 
 //Handles chat commands
@@ -459,6 +540,10 @@ function handleCommand(name, userid, text) {
     //Randomly picks a response in reptarCall()
     case 'reptar':
         reptarCall();
+        break;
+    
+    case 'version':
+        bot.speak(version);
         break;
         
     //Bot freakout
@@ -1039,7 +1124,7 @@ function handleCommand(name, userid, text) {
     //Shuts down bot (only the main admin can run this)
     //Disconnects from room, exits process.
     case 'meow, shut down':
-        if (userid == config.admins.admins.mainadmin) {
+        if (userid == config.admins.mainadmin) {
             bot.speak('Shutting down...');
             bot.roomDeregister();
             process.exit(0);
@@ -1048,7 +1133,7 @@ function handleCommand(name, userid, text) {
     
     //Restarts bot (if keepalive script is used)
     case 'meow, restart':
-        if (userid == config.admins.admins.mainadmin) {
+        if (userid == config.admins.mainadmin) {
             bot.speak('Back in 10 seconds! Rebooting...');
             bot.roomDeregister();
             process.exit(1);
@@ -1145,139 +1230,6 @@ function handleCommand(name, userid, text) {
 	}		
 }
 
-//Welcome message for TCP connection
-bot.on('tcpConnect', function (socket) {
-	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
-});
-
-//TCP message handling
-bot.on('tcpMessage', function (socket, msg) {
-    console.log('TCP: \'' + msg + '\'');
-    
-    //If the message ends in a ^M character, remove it.
-    if (msg.substring(msg.length - 1).match(/\cM/)) {
-        msg = msg.substring(0, msg.length - 1);
-    }
-    
-	//Have the bot speak in chat
-	if (msg.match(/^speak/)) {
-		bot.speak(msg.substring(6));
-		socket.write('>> Message sent\n');
-	}
-	
-	//Boot the given userid
-	//TODO: Change userid to user name
-	if (msg.match(/^boot/)) {
-		bot.boot(msg.substring(5));
-        socket.write('>> User booted\n');
-	}
-    
-    //Set config commands
-    //Note: These do not permanently modify the config file and should only be
-    //used for adjustments at runtime
-    //TODO: Implement
-    if (msg.toLowerCase().match(/^set /)) {
-        msg = msg.substring(4);
-        if (msg.match(/^logconsoleevents/)) {
-            if (msg.substring(21) == 'true') {
-                config.consolelog = true;
-                socket.write('>> Log Console Events: TRUE');
-            } else {
-                config.consolelog = false;
-                socket.write('>> Log Console Events: FALSE');
-            }
-        }
-        if (msg.match(/^votebonus/)) {
-            switch (msg.substring(14)) {
-                case 'vote':
-                    config.bonusvote = 'VOTE';
-                    socket.write('>> Bonus mode: VOTE');
-                    break;
-                case 'dice':
-                    config.bonusvote = 'DICE';
-                    socket.write('>> Bonus mode: DICE');
-                    break;
-                case 'chat':
-                    config.bonusvote = 'CHAT';
-                    socket.write('>> Bonus mode: CHAT');
-                    break;
-                case 'auto':
-                    config.bonusvote = 'AUTO';
-                    socket.write('>> Bonus mode: AUTO');
-                    break;
-                case 'none':
-                    config.bonusvote = 'NONE';
-                    socket.write('>> Bonus mode: NONE');
-                    break;
-            }
-        }
-        
-    }
-	
-	//Handle commands
-	switch (msg) {
-		case 'help':
-			socket.write('>> xxMEOWxx responds to the following commands in the console: '
-				+ 'online, .a,\n'
-                + '>> .l, step up, step down, speak [text], exit, shutdown\n');
-			break;
-		case 'online':
-			socket.write('>> ' + currentsong.listeners + '\n');
-			break;
-		case 'users':
-			var output = '>> ';
-			for (var i in usersList) {
-				output += (usersList[i].name) + ', ';
-			}
-			socket.write(output.substring(0,output.length - 2) + '\n');
-			break;
-		case 'nowplaying':
-			socket.write('>> ' + currentsong.artist + ' - ' + currentsong.song
-				+ '\n>> DJ ' + currentsong.djname + ' +' + currentsong.up 
-				+ ' -' + currentsong.down + '\n');
-			break;
-		case '.a':
-			bot.vote('up');
-			socket.write('>> Awesomed\n');
-			break;
-		case '.l':
-			bot.vote('down');
-			socket.write('>> Lamed\n');
-			break;
-		case 'step up':
-			bot.addDj();
-			socket.write('>> Stepped up\n');
-			break;
-		case 'step down':
-			bot.remDj(config.botinfo.userid);
-			socket.write('>> Stepped down\n');
-			break;
-		case 'pulldj':
-			bot.remDj(usertostep);
-			socket.write('>> DJ removed\n');
-			break;
-        case 'restart':
-            socket.write('>> Rebooting...\n');
-            bot.speak('Back in 10 seconds! Rebooting...');
-            socket.end();
-            bot.roomDeregister();
-            process.exit(1);
-            break;
-		case 'exit':
-			socket.write('>> Goodbye!\n');
-			socket.end();
-			break;
-		case 'shutdown':
-			socket.write('>> Shutting down...\n');
-			bot.speak('Shutting down...');
-			socket.end();
-			bot.roomDeregister();
-			process.exit(0);
-			break;
-		}
-});
-
-
 //When the bot is ready, this makes it join the primary room (ROOMID)
 //and sets up the database/tables
 bot.on('ready', function (data) {
@@ -1353,6 +1305,8 @@ bot.on('roomChanged', function(data) {
 		currentsong.down      = data.room.metadata.downvotes;
 		currentsong.listeners = data.room.metadata.listeners;
 	}
+    
+    console.log(data.room.metadata.current_song);
 
 	//Creates the dj list
 	for (i in data.room.metadata.djs) {
@@ -1726,7 +1680,7 @@ bot.on('add_dj', function(data) {
         
             //if the user waited longer than the FFA timeout or it's a free-for-all,
             //remove from list. Else, remove dj and warn
-            legalstepdown = ((waittime > (config.enforcement.ffarules.length * 1000))
+            legalstepdown = ((waittime > (config.enforcement.ffarules.timeout * 1000))
                 || (ffa && config.enforcement.ffarules.multiplespotffa));
             
             if (legalstepdown) {
@@ -1790,9 +1744,9 @@ bot.on('snagged', function(data) {
 
 bot.on('rem_moderator', function(data) {
     //If the bot admin was demodded, remod them
-	if(config.admins.admins.mainadmin == data.userid) {
+	if(config.admins.mainadmin == data.userid) {
 		setTimeout(function() {
-			bot.addModerator(config.admins.admins.mainadmin);
+			bot.addModerator(config.admins.mainadmin);
 		}, 200);
 	}
 });
