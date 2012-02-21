@@ -142,25 +142,27 @@ function admincheck(userid) {
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
 //the result from a RNG.
-function reptarCall() {
+function reptarCall(source) {
 	var rand = Math.random();
+    var response = '';
 	if (rand < 0.05) {
-		bot.speak('That band is pretty awesome.');
+		response = ('That band is pretty awesome.');
 	} else if (rand < 0.10) {
-		bot.speak('Good morning!');
+		response = ('Good morning!');
 	} else if (rand < 0.17) {
-		bot.speak('Rawr!');
+		response = ('Rawr!');
 	} else if (rand < 0.3) {
-		bot.speak('rawr!');
+		response = ('rawr!');
 	} else if (rand < 0.4) {
-		bot.speak('RAWR!');
+		response = ('RAWR!');
 	} else if (rand < 0.5) {
-		bot.speak('rawr.');
+		response = ('rawr.');
 	} else if (rand < 0.6) {
-		bot.speak('RAWR!!!');
+		response = ('RAWR!!!');
 	} else {
-		bot.speak('.reptar');
+		response = ('.reptar');
 	}
+    return response;
 }
 
 //Adds the song data to the songdata table.
@@ -631,7 +633,12 @@ function handleCommand(name, userid, text, source) {
     //Reptar call!
     //Randomly picks a response in reptarCall()
     case 'reptar':
-        reptarCall();
+        var response = reptarCall();
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
     
     case 'version':
@@ -652,7 +659,11 @@ function handleCommand(name, userid, text, source) {
             bot.pm(userid, response);
         }
         setTimeout(function() {
-            reptarCall();
+            if (source == 'speak') {
+                bot.speak(reptarCall());
+            } else if (source == 'pm') {
+                bot.pm(userid, reptarCall());
+            }
         }, 1000);
         break;
         
@@ -748,7 +759,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
             } else if (source == 'pm') {
-                bot.pm(pastdjnames.substring(0, pastdjnames.length - 2));
+                bot.pm(userid, pastdjnames.substring(0, pastdjnames.length - 2));
             }
         }
         break;
@@ -1410,6 +1421,15 @@ function handleCommand(name, userid, text, source) {
             bot.speak(response);
         } else if (source == 'pm') {
             bot.pm(userid, response);
+        }
+    }
+    
+    //Sends a PM to the user
+    if (text.toLowerCase().match(/^meow, pm me/)) {
+        if (source == 'speak') {
+            bot.pm(userid, 'Hey there! Type "commands" for a list of commands.');
+        } else if (source == 'pm') {
+            bot.pm(userid, 'But... you PM\'d me that. Do you think I\'m stupid? >:T');
         }
     }
 
