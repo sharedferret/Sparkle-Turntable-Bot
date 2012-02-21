@@ -250,7 +250,7 @@ function canUserStep(name, userid) {
                 }
             } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
                 var timeremaining = (config.enforcement.stepuprules.length * 60000)
-                    - (new Date().getTime() - pastdjs[i].wait.gettime());
+                    - (new Date().getTime() - pastdjs[i].wait.getTime());
                 
                 return (name + ', please wait ' + Math.floor(timeremaining / 60000) + ' minutes and '
                     + Math.floor((timeremaining % 60000)/1000) + ' seconds.');
@@ -1437,7 +1437,7 @@ function handleCommand(name, userid, text, source) {
     
     //Checks if a user can step up as per room rules or if they must wait
     if (text.toLowerCase().match(/^can i step up/) && config.enforcement.enforceroom) {
-        var response = (canUserStep(name, userid));
+        var response = canUserStep(name, userid);
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
