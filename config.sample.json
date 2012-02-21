@@ -1,0 +1,53 @@
+{"botinfo":
+	{"auth":"auth+live+#####",
+	"userid":"#####",
+	"laptoptype":"chrome"},
+"roomid":"4f1e02590c4cc807574030f1",
+"admins":
+	{"mainadmin":"#####",
+	"admins": ["#####"] },
+"database":
+	{"usedb":true,
+	"dbname":"nodejs_mysql_treehouse", 
+	"tablenames": 
+		{"song": "SONGLIST", 
+		"chat": "CHATLOG", 
+		"user": "USERS", 
+		"holiday": "HOLIDAY_GREETINGS"},
+	"login":{
+		"user":"#####",
+		"password":"#####"}},
+"lastfm":
+	{"useapi":true,
+	"lastfmkey":"#####"},
+"tcp":
+	 {"usetcp": true, 
+	"port": 8180, 
+	"host": "localhost"},
+"responses":
+	{"respond":true,
+	"reportsongstats":true,
+	"welcomeusers":true,
+	"greeting":"Welcome, ",
+	"ownerresponse":"sharedferret made me!",
+	"sing":true, 
+	"rules": 
+		{"description": "No queue, fastest finger, play two songs and step down", 
+		"link": "http://tinyurl.com/63hr2jl"}
+	},
+"consolelog":false,
+"bonusvote":"VOTE",
+"enforcement":
+	{"enforceroom":true,
+	"songstoplay":2,
+	"stepuprules":
+		{"waittostepup":true,
+		"waittype":"SONGS",
+		"length":4},
+	"ffarules":
+		{"multiplespotffa":true,
+		"timerffa":true,
+		"timeout":10},
+	"waitlist":false}, 
+"maintenance": 
+	{"autorejoin": true}}
