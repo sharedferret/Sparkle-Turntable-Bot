@@ -2090,7 +2090,11 @@ bot.on('booted_user', function(data) {
 });
 
 bot.on('pmmed', function(data) {
-    handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+    try {
+        handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+    } catch (e) {
+        bot.pm(data.senderid, 'xxMEOWxx only responds to people in our room! http://turntable.fm/indieclassic_alternative_1_done');
+    }
 });
  
 /**
