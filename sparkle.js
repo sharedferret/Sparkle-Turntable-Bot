@@ -389,12 +389,14 @@ bot.on('tcpMessage', function (socket, msg) {
             //Database get commands
             
             //Set commands
+            /**
             case 'setconfig':
                 //Authenticate using jsonmsg.login.username, jsonmsg.login.password
                 var newconfig = jsonmsg.parameter;
                 config = newconfig;
                 response = {response: 'setconfig', value: config};
                 break;
+            */
         }
     }
     socket.write(JSON.stringify(response));

@@ -4,19 +4,6 @@ A customizable Turntable.fm bot.
 
 This is still early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms.
 
-## Experimental Branch
-
-This branch is used for development, and builds from this branch may not be stable. If you're just starting out, I'd recommend using the master branch.
-
-Goals for this branch:
-
-* Convert config.js and enforcement.js files to JSON k/v files
-* Allow the bot to run using SQLite in addition to mysql
-* Find a better way to store command response code
-* Completely redo HTTP and/or TCP connections to be able to send/receive commands/config info/etc
-* Prepare bot to work with frontend application
-* [Long-term] Front-end helper application for Windows, OSX, iOS to modify config information, see the status of the bot/room, and other features
-
 ## Installation
 
 To run the bot, you'll need the following installed:
@@ -29,14 +16,18 @@ To run the bot, you'll need the following installed:
 
 ## Run
 
-* Fill out the config.js file with your bot account's user ID, auth code, target room ID, admin ID info, and other options
-	- If you do not plan to use the database features or do not want to install mysql, set exports.useDatabase to FALSE
-* If you set the roomEnforcement flag, set the enforcement options for your room in enforcement.js
+* Fill out the config.json file (instructions [here](CONFIG.md)) with your bot account's user ID, auth code, target room ID, admin ID info, and other options
+  - If you do not plan to use the database features or do not want to install mysql, set database.usedb to FALSE
+  - If you want your bot to enforce room rules, fill out the enforcement section; otherwise, set enforcement.enforceroom to FALSE
 * If you plan on using a database, create new tables using the .sql files provided (the songlist, userlist, and chatlog tables will be created for you)
 
 Finally, run your bot using the following command in a console/terminal/command prompt:
 
 	node sparkle.js
+
+Use this command to run your bot in the background:
+
+	nohup node sparkle.js &
 
 A keepalive shell script is included to allow the bot to run permanently. (Note: if you use this, do watch the nohup.out file to ensure the bot is continuing to work properly)
 
@@ -47,16 +38,16 @@ A keepalive shell script is included to allow the bot to run permanently. (Note:
 
 The bot can: 
 
-* Respond to a set of commands
+* Respond to a set of commands in chat and through turntable's new PM system
 * Awesome songs based on various systems
 * Log vote, chat, song, room events in the console
 * Report song stats in chat after each song
 * Welcome users to the room
 * Enforce room rules regarding song limits and timeouts before a person can DJ again
 * Log song statistics and chat entries in a mysql database
-* Receive instructions via TCP
+* Receive and respond to instructions via TCP
 
-### Song Awesomeing
+### Song Awesoming
 
 The bot can awesome songs based on one of four modes. These modes can be set in the config.js file prior to running the bot.
 
@@ -94,6 +85,8 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 * .sparklecommands - Displays a list of commands supported by this bot.
 
 * help, commands - Displays a list of commands available in the Indie/Classic Alt 1+Done room	
+
+* meow, pm me - The bot will send you a Private Message so you can send private requests to it
 
 * bonus - Adds a bonus point to a song (if enabled). When a song has enough bonus points, the bot will awesome.
           Other phrases that add a bonus point: tromboner, meow, /bonus, good song, great song, nice pick,
@@ -144,6 +137,8 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 * stats - Gives overall room statistics (number of songs played, number of awesomes/lames, averages).
 
 * past24hours - Displays the 3 most-awesomed DJs in the past 24 hours in the room.
+
+* mypast24hours - Displays your stats in the room over the past 24 hours.
 
 * bestplays - Returns the three song plays with the most awesomes logged by the bot.
 
@@ -230,4 +225,4 @@ These commands can be performed via TCP access to the bot.
 
 ## Help
 
-If you have a nontrivial question (please don't ask me how to install node.js or the MySQL community server), feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
+If you have a nontrivial question (please don't ask me how to install node.js or the MySQL community server, for example), feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
