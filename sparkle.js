@@ -491,7 +491,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
 
@@ -504,7 +504,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
     
@@ -556,7 +556,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }
         break;
@@ -569,7 +569,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         } else if (config.bonusvote == 'CHAT') {
             var target = getTarget();
@@ -577,14 +577,14 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         } else if (config.bonusvote == 'DICE') {
             var response = ('The DJ must roll a 4 or higher using /roll to get a bonus.');
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }
         break;
@@ -599,7 +599,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
     
@@ -609,7 +609,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
 
@@ -626,7 +626,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
         
@@ -637,7 +637,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
     
@@ -646,7 +646,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
         
@@ -656,13 +656,13 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         setTimeout(function() {
             if (source == 'speak') {
                 bot.speak(reptarCall());
             } else if (source == 'pm') {
-                bot.pm(userid, reptarCall());
+                bot.pm(reptarCall(), userid);
             }
         }, 1000);
         break;
@@ -674,14 +674,14 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
 			setTimeout(function() {
 				var response = (config.responses.rules.description);
                 if (source == 'speak') {
                     bot.speak(response);
                 } else if (source == 'pm') {
-                    bot.pm(userid, response);
+                    bot.pm(response, userid);
                 }
 			}, 600);
 			break;
@@ -705,7 +705,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }, timetowait);
         break;
@@ -730,7 +730,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
         
@@ -741,7 +741,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
     
@@ -759,7 +759,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
             } else if (source == 'pm') {
-                bot.pm(userid, pastdjnames.substring(0, pastdjnames.length - 2));
+                bot.pm(pastdjnames.substring(0, pastdjnames.length - 2), userid);
             }
         }
         break;
@@ -773,7 +773,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
         
@@ -784,7 +784,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }, 1200);
         break;
@@ -796,7 +796,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }, 1200);
         break;
@@ -808,7 +808,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
         
@@ -832,7 +832,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
                     found = true;
                 }
@@ -843,7 +843,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }
         break;
@@ -858,7 +858,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response.substring(0, response.length - 2));
             } else if (source == 'pm') {
-                bot.pm(userid, response.substring(0, response.length - 2));
+                bot.pm(response.substring(0, response.length - 2), userid);
             }
         }
         break;
@@ -872,7 +872,7 @@ function handleCommand(name, userid, text, source) {
             if (source == 'speak') {
                 bot.speak(response);
             } else if (source == 'pm') {
-                bot.pm(userid, response);
+                bot.pm(response, userid);
             }
         }
         break;
@@ -894,7 +894,7 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
         break;
     
@@ -934,7 +934,7 @@ function handleCommand(name, userid, text, source) {
                         if (source == 'speak') {
                             bot.speak(response);
                         } else if (source == 'pm') {
-                            bot.pm(userid, response);
+                            bot.pm(response, userid);
                         }
                     }
             });
@@ -964,7 +964,7 @@ function handleCommand(name, userid, text, source) {
                         if (source == 'speak') {
                             bot.speak(response);
                         } else if (source == 'pm') {
-                            bot.pm(userid, response);
+                            bot.pm(response, userid);
                         }
                     }
             });
@@ -1000,7 +1000,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1020,7 +1020,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1045,7 +1045,26 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
+                    }
+            });
+        }
+        break;
+        
+    case 'mypast24hours':
+        if (config.database.usedb) {
+            client.query('SELECT count(*) AS songs, sum(up) AS upvotes, sum(down) AS downvotes FROM '
+                + config.database.dbname + '.'
+                + config.database.tablenames.song + ' WHERE started > DATE_SUB(NOW(), '
+                + 'INTERVAL 1 DAY) AND djid LIKE \'' + userid + '\'',
+                function select(error, results, fields) {
+                    var response = name + ', you have played ' + results[0]['songs']
+                        + ' songs in the past 24 hours, with ' + results[0]['upvotes']
+                        + ' upvotes and ' + results[0]['downvotes'] + ' downvotes.';
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1069,7 +1088,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1093,7 +1112,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1115,7 +1134,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1136,7 +1155,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1158,7 +1177,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1180,7 +1199,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1213,7 +1232,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1234,7 +1253,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1255,7 +1274,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1276,7 +1295,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1294,7 +1313,7 @@ function handleCommand(name, userid, text, source) {
                     if (source == 'speak') {
                         bot.speak(response);
                     } else if (source == 'pm') {
-                        bot.pm(userid, response);
+                        bot.pm(response, userid);
                     }
             });
         }
@@ -1314,7 +1333,7 @@ function handleCommand(name, userid, text, source) {
                         if (source == 'speak') {
                             bot.speak(response);
                         } else if (source == 'pm') {
-                            bot.pm(userid, response);
+                            bot.pm(response, userid);
                         }
                     }
             });
@@ -1420,16 +1439,16 @@ function handleCommand(name, userid, text, source) {
         if (source == 'speak') {
             bot.speak(response);
         } else if (source == 'pm') {
-            bot.pm(userid, response);
+            bot.pm(response, userid);
         }
     }
     
     //Sends a PM to the user
     if (text.toLowerCase().match(/^meow, pm me/)) {
         if (source == 'speak') {
-            bot.pm(userid, 'Hey there! Type "commands" for a list of commands.');
+            bot.pm('Hey there! Type "commands" for a list of commands.', userid);
         } else if (source == 'pm') {
-            bot.pm(userid, 'But... you PM\'d me that. Do you think I\'m stupid? >:T');
+            bot.pm('But... you PM\'d me that. Do you think I\'m stupid? >:T', userid);
         }
     }
 
@@ -1461,14 +1480,14 @@ function handleCommand(name, userid, text, source) {
                         if (source == 'speak') {
                             bot.speak(response);
                         } else if (source == 'pm') {
-                            bot.pm(userid, response);
+                            bot.pm(response, userid);
                         }
                 	} catch(e) {
 				var response = ('Sorry, I can\'t find that location.');
                 if (source == 'speak') {
                     bot.speak(response);
                 } else if (source == 'pm') {
-                    bot.pm(userid, response);
+                    bot.pm(response, userid);
                 }
 			}
             }
@@ -1498,14 +1517,14 @@ function handleCommand(name, userid, text, source) {
 						if (source == 'speak') {
                             bot.speak(botresponse);
                         } else if (source == 'pm') {
-                            bot.pm(userid, botresponse);
+                            bot.pm(botresponse, userid);
                         }
 					} catch (e) {
 						var response = ('Sorry, no locations found.');
                         if (source == 'speak') {
                             bot.speak(response);
                         } else if (source == 'pm') {
-                            bot.pm(userid, response);
+                            bot.pm(response, userid);
                         }
 					}
 				}
@@ -1530,7 +1549,7 @@ function handleCommand(name, userid, text, source) {
                         if (source == 'speak') {
                             bot.speak(response.substring(0,response.length-2));
                         } else if (source == 'pm') {
-                            bot.pm(userid, response.substring(0,response.length-2));
+                            bot.pm(response.substring(0,response.length-2), userid);
                         }
 			});
 		}
