@@ -14,7 +14,7 @@
  *
 */
 
-var version = '[experimental] 2012.02.16';
+var version = '[experimental] 2012.02.21';
 
 var fs = require('fs');
 
@@ -26,6 +26,7 @@ var request;
 var singalong;
 var enforcement;
 var uptime = new Date();
+var sockets = new Array();
 
 //Creates the bot listener
 try {
@@ -184,7 +185,7 @@ function addToDb(data) {
 function enforceRoom() {
 	setTimeout( function() {
 		if(!userstepped) {
-			bot.speak(usersList[usertostep].name + ', please step down');
+			bot.speak('@' + usersList[usertostep].name + ', please step down');
 			setTimeout( function() {
 				if(!userstepped) {
 					bot.remDj(usertostep);
@@ -267,7 +268,16 @@ function canUserStep(name, userid) {
 //Welcome message for TCP connection
 bot.on('tcpConnect', function (socket) {
 	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
-    console.log(socket);
+    sockets.push({socket: socket, online: false, votes: false});
+});
+
+bot.on('tcpEnd', function(socket) {
+    for (i in sockets) {
+        if (sockets[i].socket.destroyed) {
+            sockets.splice(i, 1);
+        }
+    }
+    console.log(sockets);
 });
 
 //TCP message handling
@@ -284,6 +294,38 @@ bot.on('tcpMessage', function (socket, msg) {
         switch (jsonmsg.command) {
         
             //Get commands
+            
+            case 'sendonlineevents':
+                for (i in sockets) {
+                    if (sockets[i].socket == socket) {
+                        if (jsonmsg.parameter == 'true') {
+                            sockets[i].online = true;
+                        } else if (jsonmsg.parameter == 'false') {
+                            sockets[i].online = false;
+                        }
+                        response = {response: 'sendvoteevents', value: sockets[i].online};
+                    }
+                }
+                break;
+                
+            case 'sendvoteevents':
+                for (i in sockets) {
+                    if (sockets[i].socket == socket) {
+                        if (jsonmsg.parameter == 'true') {
+                            sockets[i].votes = true;
+                        } else if (jsonmsg.parameter == 'false') {
+                            sockets[i].votes = false;
+                        }
+                        response = {response: 'sendvoteevents', value: sockets[i].votes};
+                        setTimeout(function () {
+                        socket.write(JSON.stringify({response: 'currentsong', 
+                            value: currentsong}));
+                        }, 200);
+                        
+                    }
+                }
+                break;
+                
             case 'online':
                 response = {response: 'online', value: currentsong.listeners};
                 break;
@@ -324,17 +366,21 @@ bot.on('tcpMessage', function (socket, msg) {
                 
             case 'stepup':
                 bot.addDj();
+                response = {response: 'stepup', value: true};
                 break;
             
             case 'stepdown':
                 bot.remDj(config.botinfo.userid);
+                response = {response: 'stepdown', value: true};
                 break;
                 
             case 'pulldj':
                 bot.remDj(usertostep);
+                response = {response: 'pulldj', value: true};
                 break;
                 
             case 'exit':
+                response = {response: 'exit', value: true};
                 socket.end();
                 break;
                 
@@ -427,26 +473,37 @@ bot.on('tcpMessage', function (socket, msg) {
 });
 
 //Handles chat commands
-function handleCommand(name, userid, text) {
+function handleCommand(name, userid, text, source) {
     switch(text) {
     //--------------------------------------
     // Command lists
     //--------------------------------------
     
     case '.sparklecommands':
-        bot.speak('commands: .owner, .source, mystats, bonus, points, rules, ping, '
+        
+        var response = 'commands: .owner, .source, mystats, bonus, points, rules, ping, '
             + 'platforms, reptar, mostplayed, mostawesomed, mostlamed, mymostplayed, '
             + 'mymostawesomed, mymostlamed, totalawesomes, mostsnagged, '
             + 'pastnames [username], .similar, .similarartists, '
-            + '.weather [zip], .find [zip] [thing]');
+            + '.weather [zip], .find [zip] [thing]';
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
 
     case 'help':
     case 'commands':
-        bot.speak('commands: .ad, bonus, points, ping, reptar, merica, .random, platforms, '
+        var response = 'commands: .ad, bonus, points, ping, reptar, merica, .random, platforms, '
             + '.twitter, .rules, .users, .owner, .source, mystats, mostplayed, '
             + 'mostawesomed, mymostplayed, mymostawesomed, '
-            + 'pastnames [username], .similar, .similarartists');
+            + 'pastnames [username], .similar, .similarartists';
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
     
     //--------------------------------------
@@ -493,21 +550,40 @@ function handleCommand(name, userid, text) {
             }
             bonusvote = true;
         } else {
-            bot.speak(name + ', you rolled a ' + roll + '.');
+            var response = (name + ', you rolled a ' + roll + '.');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }
-            
         break;
     
     //Checks the number of points cast for a song, as well as the number needed
     case 'points':
         if (config.bonusvote == 'VOTE') {
-            bot.speak(bonusvotepoints + ' awesomes are needed for a bonus (currently '
+            var response = (bonusvotepoints + ' awesomes are needed for a bonus (currently '
                 + currentsong.up + ').');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         } else if (config.bonusvote == 'CHAT') {
             var target = getTarget();
-            bot.speak('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+            var response = ('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         } else if (config.bonusvote == 'DICE') {
-            bot.speak('The DJ must roll a 4 or higher using /roll to get a bonus.');
+            var response = ('The DJ must roll a 4 or higher using /roll to get a bonus.');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }
         break;
     
@@ -517,22 +593,38 @@ function handleCommand(name, userid, text) {
     
     //Outputs bot owner
     case '.owner':
-        bot.speak(config.responses.ownerresponse);
+        var response = (config.responses.ownerresponse);
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
     
     //Outputs github url for xxMEOWxx
 		case '.source':
-        bot.speak('My source code is available at: http://git.io/meow');
+        var response = ('My source code is available at: http://git.io/meow');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
 
     //Ping bot
     //Useful for users that use the iPhone app
     case 'ping':
         var rand = Math.random();
+        var response = '';
         if (rand < 0.5) {
-            bot.speak('You\'re still here, ' + name + '!');
+            response = ('You\'re still here, ' + name + '!');
         } else {
-            bot.speak('Still here, ' + name + '!');
+            response = ('Still here, ' + name + '!');
+        }
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
         }
         break;
         
@@ -543,12 +635,22 @@ function handleCommand(name, userid, text) {
         break;
     
     case 'version':
-        bot.speak(version);
+        var response = (version);
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
         
     //Bot freakout
     case 'reptar sucks':
-        bot.speak('OH NO YOU DIDN\'T');
+        var response = ('OH NO YOU DIDN\'T');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         setTimeout(function() {
             reptarCall();
         }, 1000);
@@ -557,9 +659,19 @@ function handleCommand(name, userid, text) {
     //Rules rehash since xxRAWRxx only responds to .rules
     //TODO: Generate rules based on bot options
 		case 'rules':
-			bot.speak('You can view the rules here: ' + config.responses.rules.link);
+			var response = ('You can view the rules here: ' + config.responses.rules.link);
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
 			setTimeout(function() {
-				bot.speak(config.responses.rules.description);
+				var response = (config.responses.rules.description);
+                if (source == 'speak') {
+                    bot.speak(response);
+                } else if (source == 'pm') {
+                    bot.pm(userid, response);
+                }
 			}, 600);
 			break;
             
@@ -571,12 +683,19 @@ function handleCommand(name, userid, text) {
         var timetowait = 1600;
         if (rand < 0.4) {
             setTimeout(function() {
-                bot.speak('Awww!');
+                if (source == 'speak') {
+                    bot.speak('Awww!');
+                }
             }, 1500);
             timetowait += 600;
         }
         setTimeout(function() {
-            bot.speak('hugs ' + name);
+            var response = ('hugs ' + name);
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }, timetowait);
         break;
         
@@ -591,18 +710,28 @@ function handleCommand(name, userid, text) {
         for (i in usersList) {
             platforms[usersList[i].laptop]++;
         }
-        bot.speak('Platforms in this room: '
+        var response = ('Platforms in this room: '
             + 'PC: ' + platforms.pc
             + '.  Mac: ' + platforms.mac
             + '.  Linux: ' + platforms.linux
             + '.  Chrome: ' + platforms.chrome
             + '.  iPhone: ' + platforms.iphone + '.');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
         
     //Returns information on the current song (for users without TT+)
     case 'songinfo':
-        bot.speak(currentsong.song + ' (mid-song stats): Awesomes: ' + currentsong.up + '  Lames: '
+        var response = (currentsong.song + ' (mid-song stats): Awesomes: ' + currentsong.up + '  Lames: '
             + currentsong.down + '  Snags: ' + currentsong.snags);
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
     
     //Lists the DJs that must wait before stepping up (as per room rules)
@@ -616,32 +745,62 @@ function handleCommand(name, userid, text) {
                         + ' (' + pastdjs[i].wait + ' songs), ';
                 }
             }
-            bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
+            if (source == 'speak') {
+                bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
+            } else if (source == 'pm') {
+                bot.pm(pastdjnames.substring(0, pastdjnames.length - 2));
+            }
         }
         break;
     
     //ICA inside joke
     case 'antiquing':
     case 'antiquing?':
-        bot.speak('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
+        var response = ('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
             + 'bargaining for antiques. Items can be bought for personal use, gifts, and '
             + 'in the case of brokers and dealers, profit.');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
         
     //Responds to reptar-related call
     case 'can you feel it!?':
         setTimeout(function() {
-            bot.speak('YES I CAN FEEL IT!');
+            var response = ('YES I CAN FEEL IT!');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }, 1200);
         break;
     
     //ICA inside joke
     case 'i enjoy that band.':
         setTimeout(function() {
-            bot.speak('Me too!');
+            var response = ('Me too!');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }, 1200);
         break;
      
+     case '.hodor':
+     case 'hodor':
+     case 'hodor?':
+        var response = ('Hodor!');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
+        break;
+        
     //--------------------------------------
     // Queue/room enforcement commands
     //--------------------------------------   
@@ -653,17 +812,28 @@ function handleCommand(name, userid, text) {
             var found = false;
             for (i in djs) {
                 if (djs[i].id == userid) {
+                    var response = '';
                     if (djs[i].remaining == 1) {
-                        bot.speak(name + ', you have one song remaining.');
+                        response = (name + ', you have one song remaining.');
                     } else {
-                        bot.speak(name + ', you have ' + djs[i].remaining + ' songs remaining.');
+                        response = (name + ', you have ' + djs[i].remaining + ' songs remaining.');
+                    }
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
                     }
                     found = true;
                 }
             }
         }
         if (!found) {
-            bot.speak(name + ', you\'re not DJing...');
+            var response = (name + ', you\'re not DJing...');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }
         break;
         
@@ -674,7 +844,11 @@ function handleCommand(name, userid, text) {
             for (i in djs) {
                 response += usersList[djs[i].id].name + ' (' + djs[i].remaining + ' songs left), ';
             }
-            bot.speak(response.substring(0, response.length - 2));
+            if (source == 'speak') {
+                bot.speak(response.substring(0, response.length - 2));
+            } else if (source == 'pm') {
+                bot.pm(userid, response.substring(0, response.length - 2));
+            }
         }
         break;
         
@@ -682,8 +856,13 @@ function handleCommand(name, userid, text) {
     case 'any spots opening soon?': 
     case 'anyone stepping down soon?':
         if (config.enforcement.enforceroom) {
-            bot.speak('The next DJ to step down is ' + usersList[djs[0].id].name + ', who has '
+            var response = ('The next DJ to step down is ' + usersList[djs[0].id].name + ', who has '
                 + djs[0].remaining + ' songs remaining.');
+            if (source == 'speak') {
+                bot.speak(response);
+            } else if (source == 'pm') {
+                bot.pm(userid, response);
+            }
         }
         break;
         
@@ -699,8 +878,13 @@ function handleCommand(name, userid, text) {
         if (days > 0) {
             response += days + ' days, ';
         }
-        bot.speak(response + hours + ' hours, ' + minutes + ' minutes, '
+        var response = (response + hours + ' hours, ' + minutes + ' minutes, '
                 + Math.floor(cur/1000) + ' seconds.');
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
         break;
     
         
@@ -735,7 +919,12 @@ function handleCommand(name, userid, text) {
                         } catch (e) {
                             //
                         }
-                        bot.speak(botstring.substring(0, botstring.length - 2));
+                        var response = (botstring.substring(0, botstring.length - 2));
+                        if (source == 'speak') {
+                            bot.speak(response);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response);
+                        }
                     }
             });
         }
@@ -760,7 +949,12 @@ function handleCommand(name, userid, text) {
                         } catch (e) {
                             //
                         }
-                        bot.speak(botstring.substring(0, botstring.length - 2));
+                        var response = (botstring.substring(0, botstring.length - 2));
+                        if (source == 'speak') {
+                            bot.speak(response);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response);
+                        }
                     }
             });
         }
@@ -784,7 +978,7 @@ function handleCommand(name, userid, text) {
                 + 'sum(down) as down, avg(down) as avgdown FROM ' + config.database.dbname
                 + '.' + config.database.tablenames.song,
                 function select(error, results, fields) {
-                    bot.speak('In this room, '
+                    var response = ('In this room, '
                         + results[0]['total'] + ' songs ('
                         + results[0]['uniquesongs'] + ' unique) have been played by '
                         + results[0]['numdjs'] + ' DJs with a total of '
@@ -792,6 +986,11 @@ function handleCommand(name, userid, text) {
                         + ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
                         + '/-' + new Number(results[0]['avgdown']).toFixed(1)
                         + ').');
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -807,7 +1006,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['UP'] + ' awesomes.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -828,7 +1031,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['username'] + ': '
                             + results[i]['upvotes'] + ' awesomes.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -848,7 +1055,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['username'] + ': '
                             + results[i]['upvotes'] + ' points.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -868,7 +1079,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['username'] + ': '
                             + results[i]['downvotes'] + ' lames.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -886,7 +1101,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['COUNT'] + ' plays.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -903,7 +1122,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SNAGS'] + ' snags.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -921,7 +1144,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' awesomes.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -939,7 +1166,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' lames.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -962,12 +1193,17 @@ function handleCommand(name, userid, text) {
                 + 'FROM '+ config.database.dbname + '.' + config.database.tablenames.song + ' WHERE `djid` LIKE \''
                 + userid + '\'',
                 function select(error, results, fields) {
-                    bot.speak (name + ', you have played ' + results[0]['total'] 
+                    var response = (name + ', you have played ' + results[0]['total'] 
                         + ' songs in this room with a total of '
                         + results[0]['up'] + ' awesomes and ' + results[0]['down']
                         + ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
                         + '/-' + new Number(results[0]['avgdown']).toFixed(1)
                         + ') (Rank: ' + results[0]['rank'] + ')');
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -984,7 +1220,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['COUNT'] + ' plays.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -1001,7 +1241,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' awesomes.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -1018,7 +1262,11 @@ function handleCommand(name, userid, text) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' lames.  ';
                     }
-                    bot.speak(response);
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -1031,7 +1279,12 @@ function handleCommand(name, userid, text) {
             client.query('SELECT COUNT(STARTED) AS COUNT FROM ' + config.database.dbname + '.'
             + config.database.tablenames.song,
                 function selectCb(error, results, fields) {
-                    bot.speak('Songs logged: ' + results[0]['COUNT'] + ' songs.');
+                    var response = ('Songs logged: ' + results[0]['COUNT'] + ' songs.');
+                    if (source == 'speak') {
+                        bot.speak(response);
+                    } else if (source == 'pm') {
+                        bot.pm(userid, response);
+                    }
             });
         }
         break;
@@ -1046,7 +1299,12 @@ function handleCommand(name, userid, text) {
             client.query('SELECT * FROM CATFACTS ORDER BY RAND() LIMIT 1',
                 function selectCb(error, results, fields) {
                     if (results[0] != null) {
-                        bot.speak(results[0]['fact']);
+                        var response = (results[0]['fact']);
+                        if (source == 'speak') {
+                            bot.speak(response);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response);
+                        }
                     }
             });
         }
@@ -1147,7 +1405,12 @@ function handleCommand(name, userid, text) {
     
     //Checks if a user can step up as per room rules or if they must wait
     if (text.toLowerCase().match(/^can i step up/) && config.enforcement.enforceroom) {
-        bot.speak(canUserStep(name, userid));
+        var response = (canUserStep(name, userid));
+        if (source == 'speak') {
+            bot.speak(response);
+        } else if (source == 'pm') {
+            bot.pm(userid, response);
+        }
     }
 
 	//Returns weather for a user-supplied city using YQL.
@@ -1164,7 +1427,7 @@ function handleCommand(name, userid, text) {
 		        + '&format=json&diagnostics=false',
         	function cbfunc(error, response, body) {
         	        if (!error && response.statusCode == 200) {
-        	                var formatted = eval('(' + body + ')');
+                            var formatted = JSON.parse(body);
         	        	try {
 						var loc = formatted.query.results.weather.rss.channel.location.city + ', '
         	            if (formatted.query.results.weather.rss.channel.location.region != '') {
@@ -1174,10 +1437,21 @@ function handleCommand(name, userid, text) {
         	            }
         	        	var temp = formatted.query.results.weather.rss.channel.item.condition.temp;
         	        	var cond = formatted.query.results.weather.rss.channel.item.condition.text;
-        	        	bot.speak('The weather in ' + loc + ' is ' + temp + 'ºF and ' + cond + '.');
+        	        	var response = ('The weather in ' + loc + ' is ' + temp + 'ºF and ' + cond + '.');
+                        if (source == 'speak') {
+                            bot.speak(response);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response);
+                        }
                 	} catch(e) {
-				bot.speak('Sorry, I can\'t find that location.');
-			}}
+				var response = ('Sorry, I can\'t find that location.');
+                if (source == 'speak') {
+                    bot.speak(response);
+                } else if (source == 'pm') {
+                    bot.pm(userid, response);
+                }
+			}
+            }
         });
 	}
 	
@@ -1201,9 +1475,18 @@ function handleCommand(name, userid, text) {
 								+ formatted.query.results.Result.City + ' ('
 								+ formatted.query.results.Result.Distance + ' miles).  ';
 						
-						bot.speak(botresponse);
+						if (source == 'speak') {
+                            bot.speak(botresponse);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, botresponse);
+                        }
 					} catch (e) {
-						bot.speak('Sorry, no locations found.');
+						var response = ('Sorry, no locations found.');
+                        if (source == 'speak') {
+                            bot.speak(response);
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response);
+                        }
 					}
 				}
 		});
@@ -1224,7 +1507,11 @@ function handleCommand(name, userid, text) {
 						for (i in results) {
 							response += results[i]['username'] + ', ';
 						}
-						bot.speak(response.substring(0,response.length-2));
+                        if (source == 'speak') {
+                            bot.speak(response.substring(0,response.length-2));
+                        } else if (source == 'pm') {
+                            bot.pm(userid, response.substring(0,response.length-2));
+                        }
 			});
 		}
 	}		
@@ -1290,6 +1577,7 @@ bot.on('ready', function (data) {
 	}
 			
 	bot.roomRegister(config.roomid);
+    bot.speak(version);
 });
 
 //Runs when the room is changed.
@@ -1305,8 +1593,6 @@ bot.on('roomChanged', function(data) {
 		currentsong.down      = data.room.metadata.downvotes;
 		currentsong.listeners = data.room.metadata.listeners;
 	}
-    
-    console.log(data.room.metadata.current_song);
 
 	//Creates the dj list
 	for (i in data.room.metadata.djs) {
@@ -1350,6 +1636,17 @@ bot.on('update_votes', function (data) {
 	currentsong.up = data.room.metadata.upvotes;
 	currentsong.down = data.room.metadata.downvotes;
 	currentsong.listeners = data.room.metadata.listeners;
+    
+    for (i in sockets) {
+        if (sockets[i].votes == true) {
+            var response = {response: 'currentsong', value: currentsong};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
 	
     //If the vote exceeds the bonus threshold and the bot's bonus mode
     //is set to VOTE, give a bonus point
@@ -1393,6 +1690,21 @@ bot.on('registered',   function (data) {
 	//Add user to usersList
 	var user = data.user[0];
 	usersList[user.userid] = user;
+    if (currentsong != null) {
+        currentsong.listeners++;
+    }
+    
+    //Send event
+    for (i in sockets) {
+        if (sockets[i].online == true) {
+            var response = {response: 'online', value: currentsong.listeners};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
 	
     //If the bonus flag is set to VOTE, find the number of awesomes needed
 	if (config.bonusvote == 'VOTE') {
@@ -1434,6 +1746,20 @@ bot.on('deregistered', function (data) {
 	if (config.consolelog) {
 		console.log('Left room: ' + data.user[0].name);
 	}
+    
+    currentsong.listeners--;
+    
+    //Send event
+    for (i in sockets) {
+        if (sockets[i].online == true) {
+            var response = {response: 'online', value: currentsong.listeners};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
 	
 	//Remove user from userlist
     //TODO: Replace this with a .splice fn
@@ -1459,7 +1785,7 @@ bot.on('speak', function (data) {
 	//If it's a supported command, handle it	
     
     if (config.responses.respond) {
-        handleCommand(data.name, data.userid, data.text);
+        handleCommand(data.name, data.userid, data.text.toLowerCase(), 'speak');
     }
     
     
@@ -1761,6 +2087,10 @@ bot.on('booted_user', function(data) {
 			bot.speak('Please do not boot the room bot.');
 		}, 27000);
 	}
+});
+
+bot.on('pmmed', function(data) {
+    handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
 });
  
 /**
