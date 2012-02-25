@@ -113,11 +113,13 @@ bot.on('roomChanged', function(data) {
     //them before, adds a new entry if they're new or have changed their username
     //since the last time we've seen them
     
-    for (i in users) {
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
-        + ' (userid, username, lastseen)'
-            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-            [users[i].userid, users[i].name]);
+    if (config.database.usedb) {
+        for (i in users) {
+            client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+            + ' (userid, username, lastseen)'
+                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+                [users[i].userid, users[i].name]);
+        }
     }
 	
 });
