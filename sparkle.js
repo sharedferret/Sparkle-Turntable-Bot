@@ -14,7 +14,7 @@
  *
 */
 
-var version = '[experimental] 2012.02.21';
+var version = '[experimental] 2012.02.24';
 
 var fs = require('fs');
 
@@ -28,71 +28,7 @@ var enforcement;
 var uptime = new Date();
 var sockets = new Array();
 
-//Creates the bot listener
-try {
-	Bot = require('ttapi');
-} catch(e) {
-	console.log(e);
-	console.log('It is likely that you do not have the ttapi node module installed.'
-		+ '\nUse the command \'npm install ttapi\' to install.');
-	process.exit(0);
-}
-
-//Creates the config object
-try {
-	config = JSON.parse(fs.readFileSync('config.json', 'ascii'));
-} catch(e) {
-	console.log(e);
-	console.log('Ensure that config.json is present in this directory.');
-	process.exit(0);
-}
-
-//Loads bot singalongs
-if (config.responses.sing) {
-    try {
-        singalong = require('./singalong.js');
-    } catch (e) {
-        console.log(e);
-        console.log('Ensure that singalong.js is present in this directory,'
-            + ' or disable the botSing flag in config.js');
-        console.log('Starting bot without singalong functionality.');
-        config.responses.sing = false;
-    }
-}
-
-//Creates mysql db object
-if (config.database.usedb) {
-	try {
-		mysql = require('mysql');
-	} catch(e) {
-		console.log(e);
-		console.log('It is likely that you do not have the mysql node module installed.'
-			+ '\nUse the command \'npm install mysql\' to install.');
-        console.log('Starting bot without database functionality.');
-		config.database.usedb = false;
-	}
-
-	//Connects to mysql server
-	try {
-		client = mysql.createClient(config.database.login);
-	} catch(e) {
-		console.log(e);
-		console.log('Make sure that a mysql server instance is running and that the '
-			+ 'username and password information in config.js are correct.');
-        console.log('Starting bot without database functionality.');
-		config.database.usedb = false;
-	}
-}
-
-//Initializes request module
-try {
-	request = require('request');
-} catch(e) {
-	console.log(e);
-	console.log('It is likely that you do not have the request node module installed.'
-		+ '\nUse the command \'npm install request\' to install.');
-	process.exit(0);
-}
+initializeModules();
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.botinfo.auth, config.botinfo.userid);
@@ -128,6 +64,689 @@ var currentsong = {
 	down: 0,
 	listeners: 0,
 	snags: 0};
+    
+
+//When the bot is ready, this makes it join the primary room (ROOMID)
+//and sets up the database/tables
+bot.on('ready', function (data) {
+
+    if (config.database.usedb) {
+		setUpDatabase();
+	}
+    
+	bot.roomRegister(config.roomid);
+});
+
+//Runs when the room is changed.
+//Updates the currentsong array and users array with new room data.
+bot.on('roomChanged', function(data) {
+	//Fill currentsong array with room data
+    if ((data.room != null) && (data.room.metadata != null)) {
+        if (data.room.metadata.current_song != null) {
+            populateSongData(data);
+        }
+
+        //Creates the dj list
+        for (i in data.room.metadata.djs) {
+            djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay});
+        }
+    }
+	
+    //If the bonus flag is set to VOTE, find the number of awesomes needed for
+    //the current song
+	if (config.bonusvote == 'VOTE') {
+		bonusvotepoints = getVoteTarget();
+	}
+    
+    
+	//Set bot's laptop type
+	bot.modifyLaptop(config.botinfo.laptop);
+	
+	//Repopulates usersList array.
+	var users = data.users;
+	for (i in users) {
+		var user = users[i];
+		usersList[user.userid] = user;
+	}
+    
+    //Adds all active users to the users table - updates lastseen if we've seen
+    //them before, adds a new entry if they're new or have changed their username
+    //since the last time we've seen them
+    
+    for (i in users) {
+        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+        + ' (userid, username, lastseen)'
+            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+            [users[i].userid, users[i].name]);
+    }
+	
+});
+
+//Runs when a user updates their vote
+//Updates current song data and logs vote in console
+bot.on('update_votes', function (data) {
+	//Update vote and listener count
+	currentsong.up = data.room.metadata.upvotes;
+	currentsong.down = data.room.metadata.downvotes;
+	currentsong.listeners = data.room.metadata.listeners;
+    
+    for (i in sockets) {
+        if (sockets[i].votes == true) {
+            var response = {response: 'currentsong', value: currentsong};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
+	
+    //If the vote exceeds the bonus threshold and the bot's bonus mode
+    //is set to VOTE, give a bonus point
+	if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
+		if (currentsong.up >= bonusvotepoints) {
+			bot.vote('up');
+			bot.speak('Bonus!');
+			bonuspoints.push('xxMEOWxx');
+			bonusvote = true;
+		}
+	}
+
+	//Log vote in console
+	//Note: Username only displayed for upvotes, since TT doesn't broadcast
+	//      username for downvote events.
+	if (config.consolelog) {
+		if (data.room.metadata.votelog[0][1] == 'up') {
+			var voteduser = usersList[data.room.metadata.votelog[0][0]];
+				console.log('Vote: [+'
+				+ data.room.metadata.upvotes + ' -'
+				+ data.room.metadata.downvotes + '] ['
+				+ data.room.metadata.votelog[0][0] + '] '
+				+ voteduser.name + ': '
+				+ data.room.metadata.votelog[0][1]);
+		} else {
+			console.log('Vote: [+'
+				+ data.room.metadata.upvotes + ' -'
+				+ data.room.metadata.downvotes + ']');
+		}
+	}
+});
+
+//Runs when a user joins
+//Adds user to userlist, logs in console, and greets user in chat.
+bot.on('registered',   function (data) {
+	//Log event in console
+	if (config.consolelog) {
+		console.log('Joined room: ' + data.user[0].name);
+	}
+	
+	//Add user to usersList
+	var user = data.user[0];
+	usersList[user.userid] = user;
+    if (currentsong != null) {
+        currentsong.listeners++;
+    }
+    
+    //Send event
+    for (i in sockets) {
+        if (sockets[i].online == true) {
+            var response = {response: 'online', value: currentsong.listeners};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
+	
+    //If the bonus flag is set to VOTE, find the number of awesomes needed
+	if (config.bonusvote == 'VOTE') {
+		bonusvotepoints = getVoteTarget();
+	}
+
+	//Greet user
+	//Displays custom greetings for certain members
+	if(config.responses.welcomeusers) {
+        //Ignore ttdashboard bots
+		if (!user.name.match(/^ttdashboard/)) {
+			if (config.database.usedb) {
+				client.query('SELECT greeting FROM ' + config.database.dbname + '.'
+                    + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
+					function cbfunc(error, results, fields) {
+						if (results[0] != null) {
+							bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
+						} else {
+							bot.speak(config.responses.greeting + user.name + '!');
+						}
+				});
+			} else {
+				bot.speak(config.responses.greeting + user.name + '!');
+			}
+		}
+	}
+    
+    //Add user to user table
+    client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+    + ' (userid, username, lastseen)'
+        + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+        [user.userid, user.name]);
+});
+
+//Runs when a user leaves the room
+//Removes user from usersList, logs in console
+bot.on('deregistered', function (data) {
+	//Log in console
+	if (config.consolelog) {
+		console.log('Left room: ' + data.user[0].name);
+	}
+    
+    currentsong.listeners--;
+    
+    //Send event
+    for (i in sockets) {
+        if (sockets[i].online == true) {
+            var response = {response: 'online', value: currentsong.listeners};
+            try {
+                sockets[i].socket.write(JSON.stringify(response));
+            } catch(e) {
+                console.log('TCP Error: ' + e);
+            }
+        }
+    }
+	
+	//Remove user from userlist
+    //TODO: Replace this with a .splice fn
+	delete usersList[data.user[0].userid];
+});
+
+//Runs when something is said in chat
+//Responds based on coded commands, logs in console, adds chat entry to chatlog table
+//Commands are added under switch(text)
+bot.on('speak', function (data) {
+	//Log in console
+	if (config.consolelog) {
+		console.log('Chat [' + data.userid + ' ' + data.name +'] ' + data.text);
+	}
+
+	//Log in db (chatlog table)
+	if (config.database.usedb) {
+		client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
+			+ 'SET userid = ?, chat = ?, time = NOW()',
+			[data.userid, data.text]);
+	}
+
+	//If it's a supported command, handle it	
+    
+    if (config.responses.respond) {
+        handleCommand(data.name, data.userid, data.text.toLowerCase(), 'speak');
+    }
+    
+    
+
+});
+
+//Runs when no song is playing.
+bot.on('nosong', function (data) {
+	//
+});
+
+//Runs at the end of a song
+//Logs song in database, reports song stats in chat
+bot.on('endsong', function (data) {
+	//Log song in DB
+	if (config.database.usedb) {
+		addToDb();
+	}
+
+    //If a DJ that needed to step down hasn't by the end of the
+    //next DJ's song, remove them immediately
+    if (config.enforcement.enforceroom && !userstepped) {
+        bot.remDj(usertostep);
+    }
+    
+	//Used for room enforcement
+    //Reduces the number of songs remaining for the current DJ by one
+    if (config.enforcement.enforceroom) {
+        for (i in djs) {
+            if (djs[i].id == currentsong.djid) {
+                djs[i].remaining--;
+                if (djs[i].remaining <= 0) {
+                    userstepped = false;
+                    usertostep = currentsong.djid;
+                }
+            }
+        }
+        
+        //If enforcement type is songs, decrease the song-wait count for all past djs
+        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
+            for (i in pastdjs) {
+                pastdjs[i].wait--;
+            }
+            
+            for (i in pastdjs) {
+                if (pastdjs[i].wait < 1) {
+                    pastdjs.splice(i, 1);
+                }
+            }
+        //If enforcement type is minutes, remove dj from pastdjs list if they can step up
+        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
+            for (i in pastdjs) {
+                //Checks if the user has waited long enough
+                //config.enforcement.stepuprules.length is converted from minutes to milliseconds
+                if ((new Date().getTime() - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
+                    pastdjs.splice(i, 1);
+                }
+            }
+        }
+    }
+    
+
+	//Report song stats in chat
+	if (config.responses.reportsongstats) {
+		bot.speak(currentsong.song + ' stats: awesomes: '
+			+ currentsong.up + ' lames: ' + currentsong.down
+			+ ' snags: ' + currentsong.snags);
+	}
+    
+    
+});
+
+//Runs when a new song is played
+//Populates currentsong data, tells bot to step down if it just played a song,
+//logs new song in console, auto-awesomes song
+bot.on('newsong', function (data) {
+	//Populate new song data in currentsong
+	populateSongData(data);
+
+	//Check something
+	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
+		bot.remDj(currentsong.djid);
+		bot.speak('NO.');
+	}
+
+	//Enforce stepdown rules
+	if (usertostep != null) {
+		if (usertostep == config.botinfo.userid) {
+			bot.remDj(config.botinfo.userid);
+		} else if (config.enforcement.enforceroom) {
+			enforceRoom();
+		}
+	}
+
+	//Log in console
+	if (config.consolelog) {
+		console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
+	}
+	
+	//Reset bonus points
+	bonusvote = false;
+	bonuspoints = new Array();
+	if (config.bonusvote == 'VOTE') {
+		bonusvotepoints = getVoteTarget();
+	} else if (config.bonusvote == 'AUTO' && (currentsong.djid != config.botinfo.userid)) {
+        var randomwait = Math.floor(Math.random() * 20) + 4;
+        setTimeout(function() {
+            bot.vote('up');
+        }, randomwait * 1000);
+    }
+    
+    //If the botSing is enabled, see if there are any lyrics for this song
+    if (config.responses.sing) {
+        //Try to find lyrics from singalong.js
+        var lyrics = singalong.getLyrics(currentsong.artist, currentsong.song);
+        if (lyrics != null) {
+            //If lyrics were found, loop through and set a timeout for each
+            for (i in lyrics) {
+                var fnc = function(y) { 
+                    setTimeout(function() { bot.speak(lyrics[y][0]); }, lyrics[y][1]);
+                }(i);
+            }
+        }
+    }
+});
+
+//Runs when a dj steps down
+//Logs in console
+bot.on('rem_dj', function (data) {
+	//Log in console
+	//console.log(data.user[0]);
+	if (config.consolelog) {
+		console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
+	}
+
+	//Adds user to 'step down' vars
+	//Used by enforceRoom()
+	if (usertostep == data.user[0].userid) {
+		userstepped = true;
+		usertostep = null;
+        
+        if (config.enforcement.enforceroom) {
+            //When a user steps, add them to the past djs array
+            if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
+                pastdjs.push({id: data.user[0].userid, wait: config.enforcement.stepuprules.length});
+            } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
+                pastdjs.push({id: data.user[0].userid, wait: new Date()});
+                setTimeout(function() {
+                    for (i in pastdjs) {
+                        if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
+                        (config.enforcement.stepuprules.length * 60000)) {
+                            pastdjs.splice(i, 1);
+                        }
+                    }
+                }, config.enforcement.stepuprules.length * 60000);
+            
+            //If a DJ is now eligible to step up, remove them from the list
+            for (i in pastdjs) {
+                if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
+                    if (pastdjs[i].wait < 1) {
+                        pastdjs.splice(i, 1);
+                    }
+                } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
+                    if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
+                        (config.enforcement.stepuprules.length * 60000)) {
+                        pastdjs.splice(i, 1);
+                    }
+                }
+            }
+            }
+        }
+	}
+    
+    //Set time this event occurred for enforcing one and down room policy
+    if (legalstepdown) {
+        enforcementtimeout = new Date();
+    }
+    legalstepdown = true;
+
+	//Remove from dj list
+	for (i in djs) {
+		if (djs[i].id == data.user[0].userid) {
+			djs.splice(i, 1);
+		}
+	}
+    
+    //If more than one DJ spot is open, set free-for-all mode to true
+    if (config.enforcement.enforceroom && config.enforcement.ffarules.multiplespotffa) {
+        ffa = (djs.length < 4);
+    }
+});
+
+//Runs when a dj steps up
+//Logs in console
+bot.on('add_dj', function(data) {
+    
+	//Log in console
+	if (config.consolelog) {
+		console.log('Stepped up: ' + data.user[0].name);
+	}
+    djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
+    
+    //See if this user is in the past djs list
+    if (config.enforcement.enforceroom) {
+    
+        
+        var found = false;
+        for (i in pastdjs) {
+            if (pastdjs[i].id == data.user[0].userid) {
+                found = true;
+                }
+        }
+    
+        //Get time elapsed between previous dj stepping down and this dj stepping up
+        var waittime = new Date().getTime() - enforcementtimeout.getTime();
+    
+        if (found) {
+        
+            //if the user waited longer than the FFA timeout or it's a free-for-all,
+            //remove from list. Else, remove dj and warn
+            legalstepdown = ((waittime > (config.enforcement.ffarules.timeout * 1000) && config.enforcement.ffarules.timerffa)
+                || (ffa && config.enforcement.ffarules.multiplespotffa));
+            
+            if (legalstepdown) {
+                for (i in pastdjs) {
+                    if(pastdjs[i].id == data.user[0].userid) {
+                        pastdjs.splice(i, 1);
+                    }
+                }
+            } 
+            else if ((config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup)
+                && (new Date().getTime() 
+                - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
+                pastdjs.splice(i, 1);
+            }
+            else {
+                //Remove DJ and warn
+                bot.remDj(data.user[0].userid);
+                for (i in pastdjs) {
+                    if(pastdjs[i].id == data.user[0].userid) {
+                        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
+                        bot.speak(data.user[0].name + ', please wait ' + pastdjs[i].wait
+                            + ' more songs or ' + (10 - Math.floor(waittime/1000))
+                            + ' more seconds before DJing again.');
+                        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
+                        var timeremaining = (config.enforcement.stepuprules.length * 60000)
+                            - (new Date().getTime() - pastdjs[i].wait.getTime());
+                        
+                        
+                        bot.speak(data.user[0].name + ', please wait '
+                            + Math.floor(timeremaining / 60000) + ' minutes and '
+                            + Math.floor((timeremaining % 60000) / 1000) + ' seconds before DJing'
+                            + ' again, or wait ' + (10 - Math.floor(waittime/1000)) + ' seconds '
+                            + 'before trying for this spot.');
+                        }
+                    }
+                }
+            }
+        }
+    }
+        
+    
+});
+
+bot.on('snagged', function(data) {
+    //Increase song snag count
+	currentsong.snags++;
+	
+    //If bonus is chat-based, increase bonus points count
+	if (config.bonusvote == 'CHAT') {
+		bonuspoints.push(usersList[data.userid].name);
+	}
+	
+	var target = getTarget();
+	if((bonuspoints.length >= target) && !bonusvote && (config.bonusvote == 'CHAT') && (currentsong.djid != config.botinfo.userid)) {
+		bot.speak('Bonus!');
+		bot.vote('up');
+		bot.snag();
+		bonusvote = true;
+	}	
+});
+
+bot.on('rem_moderator', function(data) {
+    //If the bot admin was demodded, remod them
+	if(config.admins.mainadmin == data.userid) {
+		setTimeout(function() {
+			bot.addModerator(config.admins.mainadmin);
+		}, 200);
+	}
+});
+
+bot.on('booted_user', function(data) {
+	//if the bot was booted, reboot
+	if((config.botinfo.userid == data.userid) && config.maintenance.autorejoin) {
+		setTimeout(function() {
+			bot.roomRegister(config.roomid);
+		}, 25000);
+		setTimeout(function() {
+			bot.speak('Please do not boot the room bot.');
+		}, 27000);
+	}
+});
+
+bot.on('pmmed', function(data) {
+    try {
+        handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+    } catch (e) {
+        bot.pm(data.senderid, 'xxMEOWxx only responds to people in our room! http://turntable.fm/indieclassic_alternative_1_done');
+    }
+});
+ 
+/**
+bot.on('update_user', function(data) {
+    //Update user name in users table
+    if (data.name != null) {
+        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+            + ' (userid, username, lastseen)'
+                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+                [data.userid, data.name]);
+        }
+});*/
+
+// Functions
+
+function initializeModules() {
+    //Creates the bot listener
+    try {
+        Bot = require('ttapi');
+    } catch(e) {
+        console.log(e);
+        console.log('It is likely that you do not have the ttapi node module installed.'
+            + '\nUse the command \'npm install ttapi\' to install.');
+        process.exit(0);
+    }
+
+    //Creates the config object
+    try {
+        config = JSON.parse(fs.readFileSync('config.json', 'ascii'));
+    } catch(e) {
+        console.log(e);
+        console.log('Ensure that config.json is present in this directory.');
+        process.exit(0);
+    }
+
+    //Loads bot singalongs
+    if (config.responses.sing) {
+        try {
+            singalong = require('./singalong.js');
+        } catch (e) {
+            console.log(e);
+            console.log('Ensure that singalong.js is present in this directory,'
+                + ' or disable the botSing flag in config.js');
+            console.log('Starting bot without singalong functionality.');
+            config.responses.sing = false;
+        }
+    }
+
+    //Creates mysql db object
+    if (config.database.usedb) {
+        try {
+            mysql = require('mysql');
+        } catch(e) {
+            console.log(e);
+            console.log('It is likely that you do not have the mysql node module installed.'
+                + '\nUse the command \'npm install mysql\' to install.');
+            console.log('Starting bot without database functionality.');
+            config.database.usedb = false;
+        }
+
+        //Connects to mysql server
+        try {
+            client = mysql.createClient(config.database.login);
+        } catch(e) {
+            console.log(e);
+            console.log('Make sure that a mysql server instance is running and that the '
+                + 'username and password information in config.js are correct.');
+            console.log('Starting bot without database functionality.');
+            config.database.usedb = false;
+        }
+    }
+
+    //Initializes request module
+    try {
+        request = require('request');
+    } catch(e) {
+        console.log(e);
+        console.log('It is likely that you do not have the request node module installed.'
+            + '\nUse the command \'npm install request\' to install.');
+        process.exit(0);
+    }
+}
+
+//Sets up the database
+function setUpDatabase() {
+//Creates DB and tables if needed, connects to db
+    client.query('CREATE DATABASE ' + config.database.dbname,
+        function(error) {
+            if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
+                throw (error);
+            }
+    });
+    client.query('USE '+ config.database.dbname);
+
+    //song table
+    client.query('CREATE TABLE ' + config.database.tablenames.song
+        + '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+        + ' artist VARCHAR(255),'
+        + ' song VARCHAR(255),'
+        + ' djid VARCHAR(255),'
+        + ' up INT(3),' + ' down INT(3),'
+        + ' listeners INT(3),'
+        + ' started DATETIME,'
+        + ' snags INT(3),'
+        + ' bonus INT(3))',
+			
+        function (error) {
+            //Handle an error if it's not a table already exists error
+            if(error && error.number != 1050) {
+                throw (error);
+            }
+    });
+
+    //chat table
+    client.query('CREATE TABLE ' + config.database.tablenames.chat
+        + '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+        + ' userid VARCHAR(255),'
+        + ' chat VARCHAR(255),'
+        + ' time DATETIME)',
+        function (error) {
+            //Handle an error if it's not a table already exists error
+            if(error && error.number != 1050) {
+                throw (error);
+            }
+    });
+        
+    //user table
+    client.query('CREATE TABLE ' + config.database.tablenames.user
+        + '(userid VARCHAR(255), '
+        + 'username VARCHAR(255), '
+        + 'lastseen DATETIME, '
+        + 'PRIMARY KEY (userid, username))',
+        function (error) {
+            //Handle an error if it's not a table already exists error
+            if(error && error.number != 1050) {
+                throw (error);
+            }
+    });
+}
+
+function populateSongData(data) {
+    currentsong.artist = data.room.metadata.current_song.metadata.artist;
+	currentsong.song = data.room.metadata.current_song.metadata.song;
+	currentsong.djname = data.room.metadata.current_song.djname;
+	currentsong.djid = data.room.metadata.current_song.djid;
+	currentsong.up = data.room.metadata.upvotes;
+	currentsong.down = data.room.metadata.downvotes;
+	currentsong.listeners = data.room.metadata.listeners;
+	currentsong.started = data.room.metadata.current_song.starttime;
+	currentsong.snags = 0;
+}
+
+function output(data) {
+    if (data.destination == 'speak') {
+        bot.speak(data.text);
+    } else if (data.destination == 'pm') {
+        bot.pm(data.text, data.userid);
+    }
+}
 
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
@@ -477,7 +1096,7 @@ bot.on('tcpMessage', function (socket, msg) {
 });
 
 //Handles chat commands
-function handleCommand(name, userid, text, source) {
+function handleCommand (name, userid, text, source) {
     switch(text) {
     //--------------------------------------
     // Command lists
@@ -490,11 +1109,8 @@ function handleCommand(name, userid, text, source) {
             + 'mymostawesomed, mymostlamed, totalawesomes, mostsnagged, '
             + 'pastnames [username], .similar, .similarartists, '
             + '.weather [zip], .find [zip] [thing]';
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+            
+        output({text: response, destination: source, userid: userid});
         break;
 
     case 'help':
@@ -503,11 +1119,7 @@ function handleCommand(name, userid, text, source) {
             + '.twitter, .rules, .users, .owner, .source, mystats, mostplayed, '
             + 'mostawesomed, mymostplayed, mymostawesomed, '
             + 'pastnames [username], .similar, .similarartists';
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
     
     //--------------------------------------
@@ -555,11 +1167,7 @@ function handleCommand(name, userid, text, source) {
             bonusvote = true;
         } else {
             var response = (name + ', you rolled a ' + roll + '.');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }
         break;
     
@@ -568,26 +1176,14 @@ function handleCommand(name, userid, text, source) {
         if (config.bonusvote == 'VOTE') {
             var response = (bonusvotepoints + ' awesomes are needed for a bonus (currently '
                 + currentsong.up + ').');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         } else if (config.bonusvote == 'CHAT') {
             var target = getTarget();
             var response = ('Bonus points: ' + bonuspoints.length + '. Needed: ' + target + '.');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         } else if (config.bonusvote == 'DICE') {
             var response = ('The DJ must roll a 4 or higher using /roll to get a bonus.');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }
         break;
     
@@ -595,24 +1191,24 @@ function handleCommand(name, userid, text, source) {
     // User commands
     //--------------------------------------
     
+    case 'stagedive':
+    case '/stagedive':
+    case '/dive':
+    if (userid == usertostep) {
+        bot.remDj(usertostep);
+    }
+    break;
+    
     //Outputs bot owner
     case '.owner':
         var response = (config.responses.ownerresponse);
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
     
     //Outputs github url for xxMEOWxx
 		case '.source':
         var response = ('My source code is available at: http://git.io/meow');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
 
     //Ping bot
@@ -625,47 +1221,27 @@ function handleCommand(name, userid, text, source) {
         } else {
             response = ('Still here, ' + name + '!');
         }
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
         
     //Reptar call!
     //Randomly picks a response in reptarCall()
     case 'reptar':
         var response = reptarCall();
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
     
     case 'version':
         var response = (version);
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
         
     //Bot freakout
     case 'reptar sucks':
         var response = ('OH NO YOU DIDN\'T');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         setTimeout(function() {
-            if (source == 'speak') {
-                bot.speak(reptarCall());
-            } else if (source == 'pm') {
-                bot.pm(reptarCall(), userid);
-            }
+            output({text: reptarCall(), destination: source, userid: userid});
         }, 1000);
         break;
         
@@ -673,18 +1249,10 @@ function handleCommand(name, userid, text, source) {
     //TODO: Generate rules based on bot options
 		case 'rules':
 			var response = ('You can view the rules here: ' + config.responses.rules.link);
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
 			setTimeout(function() {
 				var response = (config.responses.rules.description);
-                if (source == 'speak') {
-                    bot.speak(response);
-                } else if (source == 'pm') {
-                    bot.pm(response, userid);
-                }
+                output({text: response, destination: source, userid: userid});
 			}, 600);
 			break;
             
@@ -696,19 +1264,13 @@ function handleCommand(name, userid, text, source) {
         var timetowait = 1600;
         if (rand < 0.4) {
             setTimeout(function() {
-                if (source == 'speak') {
-                    bot.speak('Awww!');
-                }
+                output({text: 'Awww!', destination: source, userid: userid});
             }, 1500);
             timetowait += 600;
         }
         setTimeout(function() {
             var response = ('hugs ' + name);
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }, timetowait);
         break;
         
@@ -729,22 +1291,14 @@ function handleCommand(name, userid, text, source) {
             + '.  Linux: ' + platforms.linux
             + '.  Chrome: ' + platforms.chrome
             + '.  iPhone: ' + platforms.iphone + '.');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
         
     //Returns information on the current song (for users without TT+)
     case 'songinfo':
         var response = (currentsong.song + ' (mid-song stats): Awesomes: ' + currentsong.up + '  Lames: '
             + currentsong.down + '  Snags: ' + currentsong.snags);
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
     
     //Lists the DJs that must wait before stepping up (as per room rules)
@@ -758,11 +1312,7 @@ function handleCommand(name, userid, text, source) {
                         + ' (' + pastdjs[i].wait + ' songs), ';
                 }
             }
-            if (source == 'speak') {
-                bot.speak(pastdjnames.substring(0, pastdjnames.length - 2));
-            } else if (source == 'pm') {
-                bot.pm(pastdjnames.substring(0, pastdjnames.length - 2), userid);
-            }
+            output({text: pastdjnames.substring(0, pastdjnames.length - 2), destination: source, userid: userid});
         }
         break;
     
@@ -772,22 +1322,14 @@ function handleCommand(name, userid, text, source) {
         var response = ('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
             + 'bargaining for antiques. Items can be bought for personal use, gifts, and '
             + 'in the case of brokers and dealers, profit.');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
         
     //Responds to reptar-related call
     case 'can you feel it!?':
         setTimeout(function() {
             var response = ('YES I CAN FEEL IT!');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }, 1200);
         break;
     
@@ -795,11 +1337,7 @@ function handleCommand(name, userid, text, source) {
     case 'i enjoy that band.':
         setTimeout(function() {
             var response = ('Me too!');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }, 1200);
         break;
      
@@ -807,11 +1345,7 @@ function handleCommand(name, userid, text, source) {
      case 'hodor':
      case 'hodor?':
         var response = ('Hodor!');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
         
     //--------------------------------------
@@ -831,22 +1365,14 @@ function handleCommand(name, userid, text, source) {
                     } else {
                         response = (name + ', you have ' + djs[i].remaining + ' songs remaining.');
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
                     found = true;
                 }
             }
         }
         if (!found) {
             var response = (name + ', you\'re not DJing...');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }
         break;
         
@@ -857,11 +1383,7 @@ function handleCommand(name, userid, text, source) {
             for (i in djs) {
                 response += usersList[djs[i].id].name + ' (' + djs[i].remaining + ' songs left), ';
             }
-            if (source == 'speak') {
-                bot.speak(response.substring(0, response.length - 2));
-            } else if (source == 'pm') {
-                bot.pm(response.substring(0, response.length - 2), userid);
-            }
+            output({text: response.substring(0, response.length - 2), destination: source, userid: userid});
         }
         break;
         
@@ -871,11 +1393,7 @@ function handleCommand(name, userid, text, source) {
         if (config.enforcement.enforceroom) {
             var response = ('The next DJ to step down is ' + usersList[djs[0].id].name + ', who has '
                 + djs[0].remaining + ' songs remaining.');
-            if (source == 'speak') {
-                bot.speak(response);
-            } else if (source == 'pm') {
-                bot.pm(response, userid);
-            }
+            output({text: response, destination: source, userid: userid});
         }
         break;
         
@@ -893,11 +1411,7 @@ function handleCommand(name, userid, text, source) {
         }
         var response = (response + hours + ' hours, ' + minutes + ' minutes, '
                 + Math.floor(cur/1000) + ' seconds.');
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
         break;
     
         
@@ -933,11 +1447,7 @@ function handleCommand(name, userid, text, source) {
                             //
                         }
                         var response = (botstring.substring(0, botstring.length - 2));
-                        if (source == 'speak') {
-                            bot.speak(response);
-                        } else if (source == 'pm') {
-                            bot.pm(response, userid);
-                        }
+                        output({text: response, destination: source, userid: userid});
                     }
             });
         }
@@ -963,11 +1473,7 @@ function handleCommand(name, userid, text, source) {
                             //
                         }
                         var response = (botstring.substring(0, botstring.length - 2));
-                        if (source == 'speak') {
-                            bot.speak(response);
-                        } else if (source == 'pm') {
-                            bot.pm(response, userid);
-                        }
+                        output({text: response, destination: source, userid: userid});
                     }
             });
         }
@@ -999,11 +1505,7 @@ function handleCommand(name, userid, text, source) {
                         + ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
                         + '/-' + new Number(results[0]['avgdown']).toFixed(1)
                         + ').');
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1019,11 +1521,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['UP'] + ' awesomes.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1044,11 +1542,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['username'] + ': '
                             + results[i]['upvotes'] + ' awesomes.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1063,11 +1557,7 @@ function handleCommand(name, userid, text, source) {
                     var response = name + ', you have played ' + results[0]['songs']
                         + ' songs in the past 24 hours, with ' + results[0]['upvotes']
                         + ' upvotes and ' + results[0]['downvotes'] + ' downvotes.';
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1087,11 +1577,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['username'] + ': '
                             + results[i]['upvotes'] + ' points.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1111,11 +1597,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['username'] + ': '
                             + results[i]['downvotes'] + ' lames.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1133,11 +1615,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['COUNT'] + ' plays.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1154,11 +1632,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SNAGS'] + ' snags.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1176,11 +1650,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' awesomes.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1198,11 +1668,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' lames.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1231,11 +1697,7 @@ function handleCommand(name, userid, text, source) {
                         + ' lames (avg +' + new Number(results[0]['avgup']).toFixed(1) 
                         + '/-' + new Number(results[0]['avgdown']).toFixed(1)
                         + ') (Rank: ' + results[0]['rank'] + ')');
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1252,11 +1714,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['COUNT'] + ' plays.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1273,11 +1731,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' awesomes.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1294,11 +1748,7 @@ function handleCommand(name, userid, text, source) {
                         response += results[i]['TRACK'] + ': '
                             + results[i]['SUM'] + ' lames.  ';
                     }
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1312,11 +1762,7 @@ function handleCommand(name, userid, text, source) {
             + config.database.tablenames.song,
                 function selectCb(error, results, fields) {
                     var response = ('Songs logged: ' + results[0]['COUNT'] + ' songs.');
-                    if (source == 'speak') {
-                        bot.speak(response);
-                    } else if (source == 'pm') {
-                        bot.pm(response, userid);
-                    }
+                    output({text: response, destination: source, userid: userid});
             });
         }
         break;
@@ -1332,11 +1778,7 @@ function handleCommand(name, userid, text, source) {
                 function selectCb(error, results, fields) {
                     if (results[0] != null) {
                         var response = (results[0]['fact']);
-                        if (source == 'speak') {
-                            bot.speak(response);
-                        } else if (source == 'pm') {
-                            bot.pm(response, userid);
-                        }
+                        output({text: response, destination: source, userid: userid});
                     }
             });
         }
@@ -1395,18 +1837,18 @@ function handleCommand(name, userid, text, source) {
     //Bot freakout
     case 'oh my god meow':
         if (admincheck(userid)) {
-            reptarCall();
+            output({text: reptarCall(), destination: source, userid: userid});
             setTimeout(function() {
-                reptarCall();
+                output({text: reptarCall(), destination: source, userid: userid});
             }, 1400);
             setTimeout(function() {
-                reptarCall();
+                output({text: reptarCall(), destination: source, userid: userid});
             }, 2800);
             setTimeout(function() {
-                reptarCall();
+                output({text: reptarCall(), destination: source, userid: userid});
             }, 4200);
             setTimeout(function() {
-                reptarCall();
+                output({text: reptarCall(), destination: source, userid: userid});
             }, 5600);
         }
         break;
@@ -1438,11 +1880,7 @@ function handleCommand(name, userid, text, source) {
     //Checks if a user can step up as per room rules or if they must wait
     if (text.toLowerCase().match(/^can i step up/) && config.enforcement.enforceroom) {
         var response = canUserStep(name, userid);
-        if (source == 'speak') {
-            bot.speak(response);
-        } else if (source == 'pm') {
-            bot.pm(response, userid);
-        }
+        output({text: response, destination: source, userid: userid});
     }
     
     //Sends a PM to the user
@@ -1486,11 +1924,7 @@ function handleCommand(name, userid, text, source) {
                         }
                 	} catch(e) {
 				var response = ('Sorry, I can\'t find that location.');
-                if (source == 'speak') {
-                    bot.speak(response);
-                } else if (source == 'pm') {
-                    bot.pm(response, userid);
-                }
+                output({text: response, destination: source, userid: userid});
 			}
             }
         });
@@ -1516,18 +1950,10 @@ function handleCommand(name, userid, text, source) {
 								+ formatted.query.results.Result.City + ' ('
 								+ formatted.query.results.Result.Distance + ' miles).  ';
 						
-						if (source == 'speak') {
-                            bot.speak(botresponse);
-                        } else if (source == 'pm') {
-                            bot.pm(botresponse, userid);
-                        }
+						output({text: botresponse, destination: source, userid: userid});
 					} catch (e) {
 						var response = ('Sorry, no locations found.');
-                        if (source == 'speak') {
-                            bot.speak(response);
-                        } else if (source == 'pm') {
-                            bot.pm(response, userid);
-                        }
+                        output({text: response, destination: source, userid: userid});
 					}
 				}
 		});
@@ -1548,603 +1974,9 @@ function handleCommand(name, userid, text, source) {
 						for (i in results) {
 							response += results[i]['username'] + ', ';
 						}
-                        if (source == 'speak') {
-                            bot.speak(response.substring(0,response.length-2));
-                        } else if (source == 'pm') {
-                            bot.pm(response.substring(0,response.length-2), userid);
-                        }
+                        output({text: response.substring(0, response.length - 2), destination: source, userid: userid});
 			});
 		}
 	}		
 }
 
-//When the bot is ready, this makes it join the primary room (ROOMID)
-//and sets up the database/tables
-bot.on('ready', function (data) {
-	if (config.database.usedb) {
-		//Creates DB and tables if needed, connects to db
-		client.query('CREATE DATABASE ' + config.database.dbname,
-			function(error) {
-				if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
-					throw (error);
-				}
-		});
-		client.query('USE '+ config.database.dbname);
-
-		//song table
-		client.query('CREATE TABLE ' + config.database.tablenames.song
-			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
-			+ ' artist VARCHAR(255),'
-			+ ' song VARCHAR(255),'
-			+ ' djid VARCHAR(255),'
-			+ ' up INT(3),' + ' down INT(3),'
-			+ ' listeners INT(3),'
-			+ ' started DATETIME,'
-			+ ' snags INT(3),'
-			+ ' bonus INT(3))',
-			
-			function (error) {
-				//Handle an error if it's not a table already exists error
-				if(error && error.number != 1050) {
-					throw (error);
-				}
-		});
-
-		//chat table
-		client.query('CREATE TABLE ' + config.database.tablenames.chat
-			+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
-			+ ' userid VARCHAR(255),'
-			+ ' chat VARCHAR(255),'
-			+ ' time DATETIME)',
-			function (error) {
-				//Handle an error if it's not a table already exists error
-				if(error && error.number != 1050) {
-					throw (error);
-				}
-		});
-        
-        //user table
-        client.query('CREATE TABLE ' + config.database.tablenames.user
-            + '(userid VARCHAR(255), '
-            + 'username VARCHAR(255), '
-            + 'lastseen DATETIME, '
-            + 'PRIMARY KEY (userid, username))',
-            function (error) {
-                //Handle an error if it's not a table already exists error
-				if(error && error.number != 1050) {
-					throw (error);
-				}
-		});
-	}
-			
-	bot.roomRegister(config.roomid);
-    bot.speak(version);
-});
-
-//Runs when the room is changed.
-//Updates the currentsong array and users array with new room data.
-bot.on('roomChanged', function(data) {
-	//Fill currentsong array with room data
-	if (data.room.metadata.current_song != null) {
-		currentsong.artist    = data.room.metadata.current_song.metadata.artist;
-		currentsong.song      = data.room.metadata.current_song.metadata.song;
-		currentsong.djname    = data.room.metadata.current_song.djname;
-		currentsong.djid      = data.room.metadata.current_song.djid;
-		currentsong.up        = data.room.metadata.upvotes;
-		currentsong.down      = data.room.metadata.downvotes;
-		currentsong.listeners = data.room.metadata.listeners;
-	}
-
-	//Creates the dj list
-	for (i in data.room.metadata.djs) {
-        djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay});
-    }
-	
-    //If the bonus flag is set to VOTE, find the number of awesomes needed for
-    //the current song
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	}
-    
-    
-	//Set bot's laptop type
-	bot.modifyLaptop(config.botinfo.laptop);
-	
-	//Repopulates usersList array.
-	var users = data.users;
-	for (i in users) {
-		var user = users[i];
-		usersList[user.userid] = user;
-	}
-    
-    //Adds all active users to the users table - updates lastseen if we've seen
-    //them before, adds a new entry if they're new or have changed their username
-    //since the last time we've seen them
-    
-    for (i in users) {
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
-        + ' (userid, username, lastseen)'
-            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-            [users[i].userid, users[i].name]);
-    }
-	
-});
-
-//Runs when a user updates their vote
-//Updates current song data and logs vote in console
-bot.on('update_votes', function (data) {
-	//Update vote and listener count
-	currentsong.up = data.room.metadata.upvotes;
-	currentsong.down = data.room.metadata.downvotes;
-	currentsong.listeners = data.room.metadata.listeners;
-    
-    for (i in sockets) {
-        if (sockets[i].votes == true) {
-            var response = {response: 'currentsong', value: currentsong};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
-    }
-	
-    //If the vote exceeds the bonus threshold and the bot's bonus mode
-    //is set to VOTE, give a bonus point
-	if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
-		if (currentsong.up >= bonusvotepoints) {
-			bot.vote('up');
-			bot.speak('Bonus!');
-			bonuspoints.push('xxMEOWxx');
-			bonusvote = true;
-		}
-	}
-
-	//Log vote in console
-	//Note: Username only displayed for upvotes, since TT doesn't broadcast
-	//      username for downvote events.
-	if (config.consolelog) {
-		if (data.room.metadata.votelog[0][1] == 'up') {
-			var voteduser = usersList[data.room.metadata.votelog[0][0]];
-				console.log('Vote: [+'
-				+ data.room.metadata.upvotes + ' -'
-				+ data.room.metadata.downvotes + '] ['
-				+ data.room.metadata.votelog[0][0] + '] '
-				+ voteduser.name + ': '
-				+ data.room.metadata.votelog[0][1]);
-		} else {
-			console.log('Vote: [+'
-				+ data.room.metadata.upvotes + ' -'
-				+ data.room.metadata.downvotes + ']');
-		}
-	}
-});
-
-//Runs when a user joins
-//Adds user to userlist, logs in console, and greets user in chat.
-bot.on('registered',   function (data) {
-	//Log event in console
-	if (config.consolelog) {
-		console.log('Joined room: ' + data.user[0].name);
-	}
-	
-	//Add user to usersList
-	var user = data.user[0];
-	usersList[user.userid] = user;
-    if (currentsong != null) {
-        currentsong.listeners++;
-    }
-    
-    //Send event
-    for (i in sockets) {
-        if (sockets[i].online == true) {
-            var response = {response: 'online', value: currentsong.listeners};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
-    }
-	
-    //If the bonus flag is set to VOTE, find the number of awesomes needed
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	}
-
-	//Greet user
-	//Displays custom greetings for certain members
-	if(config.responses.welcomeusers) {
-        //Ignore ttdashboard bots
-		if (!user.name.match(/^ttdashboard/)) {
-			if (config.database.usedb) {
-				client.query('SELECT greeting FROM ' + config.database.dbname + '.'
-                    + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
-					function cbfunc(error, results, fields) {
-						if (results[0] != null) {
-							bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
-						} else {
-							bot.speak(config.responses.greeting + user.name + '!');
-						}
-				});
-			} else {
-				bot.speak(config.responses.greeting + user.name + '!');
-			}
-		}
-	}
-    
-    //Add user to user table
-    client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
-    + ' (userid, username, lastseen)'
-        + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-        [user.userid, user.name]);
-});
-
-//Runs when a user leaves the room
-//Removes user from usersList, logs in console
-bot.on('deregistered', function (data) {
-	//Log in console
-	if (config.consolelog) {
-		console.log('Left room: ' + data.user[0].name);
-	}
-    
-    currentsong.listeners--;
-    
-    //Send event
-    for (i in sockets) {
-        if (sockets[i].online == true) {
-            var response = {response: 'online', value: currentsong.listeners};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
-    }
-	
-	//Remove user from userlist
-    //TODO: Replace this with a .splice fn
-	delete usersList[data.user[0].userid];
-});
-
-//Runs when something is said in chat
-//Responds based on coded commands, logs in console, adds chat entry to chatlog table
-//Commands are added under switch(text)
-bot.on('speak', function (data) {
-	//Log in console
-	if (config.consolelog) {
-		console.log('Chat [' + data.userid + ' ' + data.name +'] ' + data.text);
-	}
-
-	//Log in db (chatlog table)
-	if (config.database.usedb) {
-		client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
-			+ 'SET userid = ?, chat = ?, time = NOW()',
-			[data.userid, data.text]);
-	}
-
-	//If it's a supported command, handle it	
-    
-    if (config.responses.respond) {
-        handleCommand(data.name, data.userid, data.text.toLowerCase(), 'speak');
-    }
-    
-    
-
-});
-
-//Runs when no song is playing.
-bot.on('nosong', function (data) {
-	//
-});
-
-//Runs at the end of a song
-//Logs song in database, reports song stats in chat
-bot.on('endsong', function (data) {
-	//Log song in DB
-	if (config.database.usedb) {
-		addToDb();
-	}
-
-    //If a DJ that needed to step down hasn't by the end of the
-    //next DJ's song, remove them immediately
-    if (config.enforcement.enforceroom && !userstepped) {
-        bot.remDj(usertostep);
-    }
-    
-	//Used for room enforcement
-    //Reduces the number of songs remaining for the current DJ by one
-    if (config.enforcement.enforceroom) {
-        for (i in djs) {
-            if (djs[i].id == currentsong.djid) {
-                djs[i].remaining--;
-                if (djs[i].remaining <= 0) {
-                    userstepped = false;
-                    usertostep = currentsong.djid;
-                }
-            }
-        }
-        
-        //If enforcement type is songs, decrease the song-wait count for all past djs
-        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-            for (i in pastdjs) {
-                pastdjs[i].wait--;
-            }
-            
-            for (i in pastdjs) {
-                if (pastdjs[i].wait < 1) {
-                    pastdjs.splice(i, 1);
-                }
-            }
-        //If enforcement type is minutes, remove dj from pastdjs list if they can step up
-        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-            for (i in pastdjs) {
-                //Checks if the user has waited long enough
-                //config.enforcement.stepuprules.length is converted from minutes to milliseconds
-                if ((new Date().getTime() - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
-                    pastdjs.splice(i, 1);
-                }
-            }
-        }
-    }
-    
-
-	//Report song stats in chat
-	if (config.responses.reportsongstats) {
-		bot.speak(currentsong.song + ' stats: awesomes: '
-			+ currentsong.up + ' lames: ' + currentsong.down
-			+ ' snags: ' + currentsong.snags);
-	}
-    
-    
-});
-
-//Runs when a new song is played
-//Populates currentsong data, tells bot to step down if it just played a song,
-//logs new song in console, auto-awesomes song
-bot.on('newsong', function (data) {
-	//Populate new song data in currentsong
-	currentsong.artist = data.room.metadata.current_song.metadata.artist;
-	currentsong.song = data.room.metadata.current_song.metadata.song;
-	currentsong.djname = data.room.metadata.current_song.djname;
-	currentsong.djid = data.room.metadata.current_song.djid;
-	currentsong.up = data.room.metadata.upvotes;
-	currentsong.down = data.room.metadata.downvotes;
-	currentsong.listeners = data.room.metadata.listeners;
-	currentsong.started = data.room.metadata.current_song.starttime;
-	currentsong.snags = 0;
-
-	//Check something
-	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
-		bot.remDj(currentsong.djid);
-		bot.speak('NO.');
-	}
-
-	//Enforce stepdown rules
-	if (usertostep != null) {
-		if (usertostep == config.botinfo.userid) {
-			bot.remDj(config.botinfo.userid);
-		} else if (config.enforcement.enforceroom) {
-			enforceRoom();
-		}
-	}
-
-	//Log in console
-	if (config.consolelog) {
-		console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
-	}
-	
-	//Reset bonus points
-	bonusvote = false;
-	bonuspoints = new Array();
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	} else if (config.bonusvote == 'AUTO' && (currentsong.djid != config.botinfo.userid)) {
-        var randomwait = Math.floor(Math.random() * 20) + 4;
-        setTimeout(function() {
-            bot.vote('up');
-        }, randomwait * 1000);
-    }
-    
-    //If the botSing is enabled, see if there are any lyrics for this song
-    if (config.responses.sing) {
-        //Try to find lyrics from singalong.js
-        var lyrics = singalong.getLyrics(currentsong.artist, currentsong.song);
-        if (lyrics != null) {
-            //If lyrics were found, loop through and set a timeout for each
-            for (i in lyrics) {
-                var fnc = function(y) { 
-                    setTimeout(function() { bot.speak(lyrics[y][0]); }, lyrics[y][1]);
-                }(i);
-            }
-        }
-    }
-});
-
-//Runs when a dj steps down
-//Logs in console
-bot.on('rem_dj', function (data) {
-	//Log in console
-	//console.log(data.user[0]);
-	if (config.consolelog) {
-		console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
-	}
-
-	//Adds user to 'step down' vars
-	//Used by enforceRoom()
-	if (usertostep == data.user[0].userid) {
-		userstepped = true;
-		usertostep = null;
-        
-        if (config.enforcement.enforceroom) {
-            //When a user steps, add them to the past djs array
-            if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                pastdjs.push({id: data.user[0].userid, wait: config.enforcement.stepuprules.length});
-            } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                pastdjs.push({id: data.user[0].userid, wait: new Date()});
-            
-            //If a DJ is now eligible to step up, remove them from the list
-            for (i in pastdjs) {
-                if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                    if (pastdjs[i].wait < 1) {
-                        pastdjs.splice(i, 1);
-                    }
-                } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                    if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
-                        (config.enforcement.stepuprules.length * 60000)) {
-                        pastdjs.splice(i, 1);
-                    }
-                }
-            }
-            }
-        }
-	}
-    
-    //Set time this event occurred for enforcing one and down room policy
-    if (legalstepdown) {
-        enforcementtimeout = new Date();
-    }
-    legalstepdown = true;
-
-	//Remove from dj list
-	for (i in djs) {
-		if (djs[i].id == data.user[0].userid) {
-			djs.splice(i, 1);
-		}
-	}
-    
-    //If more than one DJ spot is open, set free-for-all mode to true
-    if (config.enforcement.enforceroom && config.enforcement.ffarules.multiplespotffa) {
-        ffa = (djs.length < 4);
-    }
-});
-
-//Runs when a dj steps up
-//Logs in console
-bot.on('add_dj', function(data) {
-    
-	//Log in console
-	if (config.consolelog) {
-		console.log('Stepped up: ' + data.user[0].name);
-	}
-    djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
-    
-    //See if this user is in the past djs list
-    if (config.enforcement.enforceroom) {
-    
-        
-        var found = false;
-        for (i in pastdjs) {
-            if (pastdjs[i].id == data.user[0].userid) {
-                found = true;
-                }
-        }
-    
-        //Get time elapsed between previous dj stepping down and this dj stepping up
-        var waittime = new Date().getTime() - enforcementtimeout.getTime();
-    
-        if (found) {
-        
-            //if the user waited longer than the FFA timeout or it's a free-for-all,
-            //remove from list. Else, remove dj and warn
-            legalstepdown = ((waittime > (config.enforcement.ffarules.timeout * 1000))
-                || (ffa && config.enforcement.ffarules.multiplespotffa));
-            
-            if (legalstepdown) {
-                for (i in pastdjs) {
-                    if(pastdjs[i].id == data.user[0].userid) {
-                        pastdjs.splice(i, 1);
-                    }
-                }
-            } 
-            else if ((config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup)
-                && (new Date().getTime() 
-                - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
-                pastdjs.splice(i, 1);
-            }
-            else {
-                //Remove DJ and warn
-                bot.remDj(data.user[0].userid);
-                for (i in pastdjs) {
-                    if(pastdjs[i].id == data.user[0].userid) {
-                        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                        bot.speak(data.user[0].name + ', please wait ' + pastdjs[i].wait
-                            + ' more songs or ' + (10 - Math.floor(waittime/1000))
-                            + ' more seconds before DJing again.');
-                        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                        var timeremaining = (config.enforcement.stepuprules.length * 60000)
-                            - (new Date().getTime() - pastdjs[i].wait.getTime());
-                        
-                        
-                        bot.speak(data.user[0].name + ', please wait '
-                            + Math.floor(timeremaining / 60000) + ' minutes and '
-                            + Math.floor((timeremaining % 60000) / 1000) + ' seconds before DJing'
-                            + ' again, or wait ' + (10 - Math.floor(waittime/1000)) + ' seconds '
-                            + 'before trying for this spot.');
-                        }
-                    }
-                }
-            }
-        }
-    }
-        
-    
-});
-
-bot.on('snagged', function(data) {
-    //Increase song snag count
-	currentsong.snags++;
-	
-    //If bonus is chat-based, increase bonus points count
-	if (config.bonusvote == 'CHAT') {
-		bonuspoints.push(usersList[data.userid].name);
-	}
-	
-	var target = getTarget();
-	if((bonuspoints.length >= target) && !bonusvote && (config.bonusvote == 'CHAT') && (currentsong.djid != config.botinfo.userid)) {
-		bot.speak('Bonus!');
-		bot.vote('up');
-		bot.snag();
-		bonusvote = true;
-	}	
-});
-
-bot.on('rem_moderator', function(data) {
-    //If the bot admin was demodded, remod them
-	if(config.admins.mainadmin == data.userid) {
-		setTimeout(function() {
-			bot.addModerator(config.admins.mainadmin);
-		}, 200);
-	}
-});
-
-bot.on('booted_user', function(data) {
-	//if the bot was booted, reboot
-	if((config.botinfo.userid == data.userid) && config.maintenance.autorejoin) {
-		setTimeout(function() {
-			bot.roomRegister(config.roomid);
-		}, 25000);
-		setTimeout(function() {
-			bot.speak('Please do not boot the room bot.');
-		}, 27000);
-	}
-});
-
-bot.on('pmmed', function(data) {
-    try {
-        handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
-    } catch (e) {
-        bot.pm(data.senderid, 'xxMEOWxx only responds to people in our room! http://turntable.fm/indieclassic_alternative_1_done');
-    }
-});
- 
-/**
-bot.on('update_user', function(data) {
-    //Update user name in users table
-    if (data.name != null) {
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
-            + ' (userid, username, lastseen)'
-                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-                [data.userid, data.name]);
-        }
-});*/
