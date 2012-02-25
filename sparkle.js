@@ -226,10 +226,12 @@ bot.on('registered',   function (data) {
 	}
     
     //Add user to user table
-    client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
-    + ' (userid, username, lastseen)'
-        + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
-        [user.userid, user.name]);
+    if (config.database.usedb) {
+        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+        + ' (userid, username, lastseen)'
+            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+            [user.userid, user.name]);
+    }
 });
 
 //Runs when a user leaves the room
