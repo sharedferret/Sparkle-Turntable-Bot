@@ -74,7 +74,9 @@ This project includes several .sql files (currently, these files contain a list 
 ### Planned
 
 * A waitlist implementation
+* DJ timers for AFK monitoring
 * Graphical frontend to set config options
+* Fixing time-based wait-to-step-up rules so they actually work
 
 ## Commands
 
