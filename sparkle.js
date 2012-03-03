@@ -48,6 +48,7 @@ var ffa = false;                    //A flag denoting if free-for-all mode is ac
 var legalstepdown = true;           //A flag denoting if a user stepped up legally
 var pastdjs = new Array();          //An array of the past 4 DJs
 var djqueue = new Array();
+var waitlist = new Array();         // Array of users waiting to get on deck
 
 //Used for bonus awesoming
 var bonuspoints = new Array();      //An array of DJs wanting the bot to bonus
@@ -755,12 +756,7 @@ function output(data) {
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
 function admincheck(userid) {
-	for (i in config.admins.admins) {
-		if (userid == config.admins.admins[i]) {
-			return true;
-		}
-	}
-	return false;
+    return config.admins.mainadmin == userid || config.admins.admins.indexOf(userid) >= 0
 }
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
