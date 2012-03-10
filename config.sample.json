@@ -28,6 +28,7 @@
 	{"respond":true,
 	"reportsongstats":true,
 	"welcomeusers":true,
+    "welcomepm":true,
 	"greeting":"Welcome, ",
 	"ownerresponse":"sharedferret made me!",
 	"sing":true, 

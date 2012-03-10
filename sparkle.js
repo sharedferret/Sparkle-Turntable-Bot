@@ -212,6 +212,13 @@ bot.on('registered',   function (data) {
         welcomeUser(user.name, user.userid);
 	}
     
+    if (config.responses.welcomepm) {
+        output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
+            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
+            + '\'commands\' to see a list of commands I can respond to.',
+            destination: 'pm', userid: user.userid});
+    }
+    
     //Add user to user table
     if (config.database.usedb) {
         client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
@@ -477,7 +484,7 @@ bot.on('pmmed', function(data) {
             });
         } else {
             output({text: 'Please drop by our room first! http://http://turntable.fm/indieclassic_alternative_1_done',
-                destination: source, userid: userid});
+                destination: 'pm', userid: data.senderid});
         }
     } catch (e) {
         bot.pm(data.senderid, 'Oh dear, something\'s gone wrong.');
