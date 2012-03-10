@@ -1897,7 +1897,7 @@ function handleCommand (name, userid, text, source) {
     //--------------------------------------
     
     if (text.toLowerCase().match(/^bootuser/)) {
-        if (admincheck()) {
+        if (admincheck(userid)) {
             for (i in usersList) {
                 if (usersList[i].name.toLowerCase() == text.substring(9)) {
                     bot.boot(i, 'Test boot from another room');
@@ -1918,6 +1918,22 @@ function handleCommand (name, userid, text, source) {
             bot.pm('Hey there! Type "commands" for a list of commands.', userid);
         } else if (source == 'pm') {
             bot.pm('But... you PM\'d me that. Do you think I\'m stupid? >:T', userid);
+        }
+    }
+    
+    if (text.toLowerCase().match(/^skipwait/)) {
+        if (admincheck(userid)) {
+            for (i in usersList) {
+                if (usersList[i].name.toLowerCase() == text.substring(9)) {
+                    for (j in pastdjs) {
+                        if (pastdjs[j].id == i) {
+                            pastdjs.splice(j, 1);
+                            output({text: usersList[i].name + ' has been removed from the wait list.',
+                                destination: source, userid: userid});
+                        }
+                    }
+                }
+            }
         }
     }
 
