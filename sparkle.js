@@ -14,7 +14,7 @@
  *
 */
 
-var version = '[experimental] 2012.02.24';
+var version = '[experimental] 2012.03.09';
 
 var fs = require('fs');
 
@@ -47,8 +47,12 @@ var enforcementtimeout = new Date();//The time that the user stepped down
 var ffa = false;                    //A flag denoting if free-for-all mode is active
 var legalstepdown = true;           //A flag denoting if a user stepped up legally
 var pastdjs = new Array();          //An array of the past 4 DJs
+<<<<<<< HEAD
 var djqueue = new Array();
 var waitlist = new Array();         // Array of users waiting to get on deck
+=======
+var waitlist = new Array();
+>>>>>>> Compartmentalized a bunch of stuff
 
 //Used for bonus awesoming
 var bonuspoints = new Array();      //An array of DJs wanting the bot to bonus
@@ -210,22 +214,7 @@ bot.on('registered',   function (data) {
 	//Greet user
 	//Displays custom greetings for certain members
 	if(config.responses.welcomeusers) {
-        //Ignore ttdashboard bots
-		if (!user.name.match(/^ttdashboard/)) {
-			if (config.database.usedb) {
-				client.query('SELECT greeting FROM ' + config.database.dbname + '.'
-                    + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
-					function cbfunc(error, results, fields) {
-						if (results[0] != null) {
-							bot.speak(results[0]['greeting'] + ', ' + user.name + '!');
-						} else {
-							bot.speak(config.responses.greeting + user.name + '!');
-						}
-				});
-			} else {
-				bot.speak(config.responses.greeting + user.name + '!');
-			}
-		}
+        welcomeUser(user.name, user.userid);
 	}
     
     //Add user to user table
@@ -312,37 +301,7 @@ bot.on('endsong', function (data) {
 	//Used for room enforcement
     //Reduces the number of songs remaining for the current DJ by one
     if (config.enforcement.enforceroom) {
-        for (i in djs) {
-            if (djs[i].id == currentsong.djid) {
-                djs[i].remaining--;
-                if (djs[i].remaining <= 0) {
-                    userstepped = false;
-                    usertostep = currentsong.djid;
-                }
-            }
-        }
-        
-        //If enforcement type is songs, decrease the song-wait count for all past djs
-        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-            for (i in pastdjs) {
-                pastdjs[i].wait--;
-            }
-            
-            for (i in pastdjs) {
-                if (pastdjs[i].wait < 1) {
-                    pastdjs.splice(i, 1);
-                }
-            }
-        //If enforcement type is minutes, remove dj from pastdjs list if they can step up
-        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-            for (i in pastdjs) {
-                //Checks if the user has waited long enough
-                //config.enforcement.stepuprules.length is converted from minutes to milliseconds
-                if ((new Date().getTime() - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
-                    pastdjs.splice(i, 1);
-                }
-            }
-        }
+        reducePastDJCounts(currentsong.djid);
     }
     
 
@@ -363,7 +322,7 @@ bot.on('newsong', function (data) {
 	//Populate new song data in currentsong
 	populateSongData(data);
 
-	//Check something
+	//Skrillex is awful
 	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
 		bot.remDj(currentsong.djid);
 		bot.speak('NO.');
@@ -422,38 +381,12 @@ bot.on('rem_dj', function (data) {
 	//Adds user to 'step down' vars
 	//Used by enforceRoom()
 	if (usertostep == data.user[0].userid) {
-		userstepped = true;
-		usertostep = null;
+        //Reset stepdown vars
+        userstepped = true;
+        usertostep = null;
         
-        if (config.enforcement.enforceroom) {
-            //When a user steps, add them to the past djs array
-            if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                pastdjs.push({id: data.user[0].userid, wait: config.enforcement.stepuprules.length});
-            } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                pastdjs.push({id: data.user[0].userid, wait: new Date()});
-                setTimeout(function() {
-                    for (i in pastdjs) {
-                        if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
-                        (config.enforcement.stepuprules.length * 60000)) {
-                            pastdjs.splice(i, 1);
-                        }
-                    }
-                }, config.enforcement.stepuprules.length * 60000);
-            
-            //If a DJ is now eligible to step up, remove them from the list
-            for (i in pastdjs) {
-                if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                    if (pastdjs[i].wait < 1) {
-                        pastdjs.splice(i, 1);
-                    }
-                } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                    if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
-                        (config.enforcement.stepuprules.length * 60000)) {
-                        pastdjs.splice(i, 1);
-                    }
-                }
-            }
-            }
+        if (config.enforcement.enforceroom && config.enforcement.stepuprules.waittostepup) {
+            addToPastDJList(data.user[0].userid);
         }
 	}
     
@@ -484,65 +417,13 @@ bot.on('add_dj', function(data) {
 	if (config.consolelog) {
 		console.log('Stepped up: ' + data.user[0].name);
 	}
+    
+    //Add to DJ list
     djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
     
     //See if this user is in the past djs list
-    if (config.enforcement.enforceroom) {
-    
-        
-        var found = false;
-        for (i in pastdjs) {
-            if (pastdjs[i].id == data.user[0].userid) {
-                found = true;
-                }
-        }
-    
-        //Get time elapsed between previous dj stepping down and this dj stepping up
-        var waittime = new Date().getTime() - enforcementtimeout.getTime();
-    
-        if (found) {
-        
-            //if the user waited longer than the FFA timeout or it's a free-for-all,
-            //remove from list. Else, remove dj and warn
-            legalstepdown = ((waittime > (config.enforcement.ffarules.timeout * 1000) && config.enforcement.ffarules.timerffa)
-                || (ffa && config.enforcement.ffarules.multiplespotffa));
-            
-            if (legalstepdown) {
-                for (i in pastdjs) {
-                    if(pastdjs[i].id == data.user[0].userid) {
-                        pastdjs.splice(i, 1);
-                    }
-                }
-            } 
-            else if ((config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup)
-                && (new Date().getTime() 
-                - pastdjs[i].wait.getTime()) > (config.enforcement.stepuprules.length * 60000)) {
-                pastdjs.splice(i, 1);
-            }
-            else {
-                //Remove DJ and warn
-                bot.remDj(data.user[0].userid);
-                for (i in pastdjs) {
-                    if(pastdjs[i].id == data.user[0].userid) {
-                        if (config.enforcement.stepuprules.waittype == 'SONGS' && config.enforcement.stepuprules.waittostepup) {
-                        bot.speak(data.user[0].name + ', please wait ' + pastdjs[i].wait
-                            + ' more songs or ' + (10 - Math.floor(waittime/1000))
-                            + ' more seconds before DJing again.');
-                        } else if (config.enforcement.stepuprules.waittype == 'MINUTES' && config.enforcement.stepuprules.waittostepup) {
-                        var timeremaining = (config.enforcement.stepuprules.length * 60000)
-                            - (new Date().getTime() - pastdjs[i].wait.getTime());
-                        
-                        
-                        bot.speak(data.user[0].name + ', please wait '
-                            + Math.floor(timeremaining / 60000) + ' minutes and '
-                            + Math.floor((timeremaining % 60000) / 1000) + ' seconds before DJing'
-                            + ' again, or wait ' + (10 - Math.floor(waittime/1000)) + ' seconds '
-                            + 'before trying for this spot.');
-                        }
-                    }
-                }
-            }
-        }
+    if (config.enforcement.enforceroom && config.enforcement.stepuprules.waittostepup) {
+        checkStepup(data.user[0].userid, data.user[0].name);
     }
         
     
@@ -589,22 +470,35 @@ bot.on('booted_user', function(data) {
 
 bot.on('pmmed', function(data) {
     try {
-        handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+        if (usersList[data.senderid] != null) {
+            handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+        } else if (config.database.usedb) {
+            client.query('SELECT username FROM `USERS` WHERE userid LIKE \'' + data.senderid
+                + '\' ORDER BY lastseen DESC LIMIT 1',
+                function cb(error, results, fields) {
+                    if (results[0]['username'] != null) {
+                        handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
+                    }
+            });
+        } else {
+            output({text: 'Please drop by our room first! http://http://turntable.fm/indieclassic_alternative_1_done',
+                destination: source, userid: userid});
+        }
     } catch (e) {
-        bot.pm(data.senderid, 'xxMEOWxx only responds to people in our room! http://turntable.fm/indieclassic_alternative_1_done');
+        bot.pm(data.senderid, 'Oh dear, something\'s gone wrong.');
     }
 });
  
-/**
+
 bot.on('update_user', function(data) {
     //Update user name in users table
-    if (data.name != null) {
+    if (config.database.usedb && (data.name != null)) {
         client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
             + ' (userid, username, lastseen)'
                 + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
                 [data.userid, data.name]);
         }
-});*/
+});
 
 // Functions
 
@@ -801,6 +695,25 @@ function addToDb(data) {
 		bonuspoints.length]);
 }
 
+function welcomeUser(name, id) {
+    //Ignore ttdashboard bots
+    if (!name.match(/^ttdashboard/)) {
+        if (config.database.usedb) {
+            client.query('SELECT greeting FROM ' + config.database.dbname + '.'
+                + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
+                function cbfunc(error, results, fields) {
+                    if (results[0] != null) {
+                        bot.speak(results[0]['greeting'] + ', ' + name + '!');
+                    } else {
+                        bot.speak(config.responses.greeting + name + '!');
+                    }
+            });
+        } else {
+            bot.speak(config.responses.greeting + name + '!');
+        }
+    }
+}
+
 //Reminds a user that has just played a song to step down, and pulls them
 //off stage if they do not step down.
 function enforceRoom() {
@@ -814,6 +727,104 @@ function enforceRoom() {
 			}, 15000);
 		}
 	}, 15000);
+}
+
+function reducePastDJCounts(djid) {
+    //First, decrement last DJ count by 1. Set to remove if they need to step down
+    for (i in djs) {
+        if (djs[i].id == djid) {
+            djs[i].remaining--;
+            if (djs[i].remaining <= 0) {
+                userstepped = false;
+                usertostep = djid;
+            }
+        }
+    }
+    
+    //Reduces past DJ counts and removes from past dj list if necessary
+    if (config.enforcement.stepuprules.waittostepup) {
+    
+        //Decrease count in pastdjs list by 1
+        if (config.enforcement.stepuprules.waittype == 'SONGS') {
+            for (i in pastdjs) {
+                pastdjs[i].wait--;
+            }
+            
+            //Remove if they're done waiting
+            for (i in pastdjs) {
+                if (pastdjs[i].wait < 1) {
+                    pastdjs.splice(i, 1);
+                }
+            }
+        }
+        else if (config.enforcement.stepuprules.waittype == 'MINUTES') {
+            //tbh nothing should be here
+        }
+    }
+}
+
+//Adds the user to the past DJ list
+function addToPastDJList(userid) {
+    if (config.enforcement.stepuprules.waittype == 'SONGS') {
+        pastdjs.push({id: userid, wait: config.enforcement.stepuprules.length});
+    }
+    else if (config.enforcement.stepuprules.waittype == 'MINUTES') {
+        pastdjs.push({id: userid, wait: new Date()});
+        
+        //I don't think this works yet, but it's how i should remove people
+        setTimeout(function() {
+            for (i in pastdjs) {
+                if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
+                    (config.enforcement.stepuprules.length * 60000)) {
+                    pastdjs.splice(i, 1);
+                }
+            }
+        }, config.enforcement.stepuprules.length * 60000);
+    }
+}
+
+function checkStepup(userid, name) {
+    //Get time elapsed between previous dj stepping down and this dj stepping up
+    var waittime = new Date().getTime() - enforcementtimeout.getTime();
+    for (i in pastdjs) {
+        if (pastdjs[i].id == userid) {
+            //if the user waited longer than the FFA timeout or it's a free-for-all,
+            //remove from list. Else, remove dj and warn
+            
+            if (config.enforcement.ffarules.multiplespotffa && ffa) {
+                legalstepdown = true;
+            }
+            else if (config.enforcement.ffarules.timerffa) {
+                legalstepdown = (waittime > (config.enforcement.ffarules.timeout * 1000));
+            }
+            
+            if (legalstepdown) {
+                for (i in pastdjs) {
+                    if (pastdjs[i].id == userid) {
+                        pastdjs.splice(i, 1);
+                    }
+                }
+            }
+            else {
+                bot.remDj(userid);
+                
+                if (config.enforcement.stepuprules.waittype == 'SONGS') {
+                    bot.speak(name + ', please wait ' + pastdjs[i].wait
+                        + ' more songs or '
+                        + (config.enforcement.ffarules.timeout - Math.floor(waittime/1000))
+                        + ' more seconds before DJing again.');
+                }
+                else if (config.enforcement.stepuprules.waittype == 'MINUTES') {
+                    var timeremaining = (config.enforcement.ffarules.timeout * 60000)
+                        - (new Date().getTime() - pastdjs[i].wait.getTime());
+                    
+                    bot.speak(name + ', please wait ' + Math.floor(timeremaining / 60000)
+                        + ' minutes and ' + Math.floor((timeremaining % 60000) / 1000)
+                        + ' seconds before DJing again.');
+                }
+            }       
+        }
+    }
 }
 
 //Calculates the target number of bonus votes needed for bot to awesome
@@ -1101,6 +1112,7 @@ function handleCommand (name, userid, text, source) {
     //--------------------------------------
     // Command lists
     //--------------------------------------
+    
     
     case '.sparklecommands':
         
@@ -1877,8 +1889,18 @@ function handleCommand (name, userid, text, source) {
     // Matching commands (regex)
     //--------------------------------------
     
+    if (text.toLowerCase().match(/^bootuser/)) {
+        if (admincheck()) {
+            for (i in usersList) {
+                if (usersList[i].name.toLowerCase() == text.substring(9)) {
+                    bot.boot(i, 'Test boot from another room');
+                }
+            }
+        }
+    }
+    
     //Checks if a user can step up as per room rules or if they must wait
-    if (text.toLowerCase().match(/^can i step up/) && config.enforcement.enforceroom) {
+    if (text.toLowerCase().match(/^can i (step|get) up/) && config.enforcement.enforceroom) {
         var response = canUserStep(name, userid);
         output({text: response, destination: source, userid: userid});
     }
