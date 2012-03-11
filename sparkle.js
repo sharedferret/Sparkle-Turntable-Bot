@@ -785,17 +785,21 @@ function addToPastDJList(userid) {
         pastdjs.push({id: userid, wait: config.enforcement.stepuprules.length});
     }
     else if (config.enforcement.stepuprules.waittype == 'MINUTES') {
-        pastdjs.push({id: userid, wait: new Date()});
+        var pushdate = new Date();
+        pastdjs.push({id: userid, wait: pushdate});
         
         //I don't think this works yet, but it's how i should remove people
+        var fnc = function(y) {
         setTimeout(function() {
             for (i in pastdjs) {
                 if ((new Date().getTime() - pastdjs[i].wait.getTime()) > 
-                    (config.enforcement.stepuprules.length * 60000)) {
+                    (config.enforcement.stepuprules.length * 60000)
+                    && (pushdate == pastdjs[i].wait)) {
                     pastdjs.splice(i, 1);
                 }
             }
         }, config.enforcement.stepuprules.length * 60000);
+        }(pushdate);
     }
 }
 
@@ -831,7 +835,7 @@ function checkStepup(userid, name) {
                         + ' more seconds before DJing again.');
                 }
                 else if (config.enforcement.stepuprules.waittype == 'MINUTES') {
-                    var timeremaining = (config.enforcement.ffarules.timeout * 60000)
+                    var timeremaining = (config.enforcement.stepuprules.length * 60000)
                         - (new Date().getTime() - pastdjs[i].wait.getTime());
                     
                     bot.speak(name + ', please wait ' + Math.floor(timeremaining / 60000)
@@ -1151,7 +1155,8 @@ function handleCommand (name, userid, text, source) {
         }
         
         if (config.enforcement.enforceroom) {
-            response += '.remaining, any spots opening soon?, djinfo, waitdjs, stagedive, ';
+            response += 'can i step up, .remaining, any spots opening soon?, '
+                + 'djinfo, waitdjs, stagedive, ';
         }
         
         if (config.database.usedb) {
