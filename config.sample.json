@@ -41,7 +41,7 @@
 "bonusvote":"VOTE",
 "enforcement":
 	{"enforceroom":true,
-    "waitlist":false
+    "waitlist":false,
 	"songstoplay":2,
 	"stepuprules":
 		{"waittostepup":true,
