@@ -9,6 +9,7 @@
 "database":
 	{"usedb":true,
 	"dbname":"nodejs_mysql_treehouse", 
+    "logchat":false,
 	"tablenames": 
 		{"song": "SONGLIST", 
 		"chat": "CHATLOG", 
@@ -40,6 +41,7 @@
 "bonusvote":"VOTE",
 "enforcement":
 	{"enforceroom":true,
+    "waitlist":false
 	"songstoplay":2,
 	"stepuprules":
 		{"waittostepup":true,
@@ -49,6 +51,6 @@
 		{"multiplespotffa":true,
 		"timerffa":true,
 		"timeout":10},
-	"waitlist":false}, 
+    }, 
 "maintenance": 
 	{"autorejoin": true}}

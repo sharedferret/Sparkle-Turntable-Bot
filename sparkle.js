@@ -14,7 +14,8 @@
  *
 */
 
-var version = '[experimental] 2012.03.09';
+var version = '[experimental] 2012.03.16';
+var botname = 'meow';
 
 var fs = require('fs');
 
@@ -92,7 +93,11 @@ bot.on('roomChanged', function(data) {
 
         //Creates the dj list
         for (i in data.room.metadata.djs) {
-            djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay});
+            if (config.enforcement.enforceroom) {
+                djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay});
+            } else {
+                djs.push({id: data.room.metadata.djs[i], remaining: 0});
+            }
         }
     }
 	
@@ -217,10 +222,26 @@ bot.on('registered',   function (data) {
 	}
     
     if (config.responses.welcomepm) {
-        output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
+        client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
+            + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
+            function cb(error, results, fields) {
+                if (results[0] != null) {
+                    var time = results[0]['lastseen'];
+                    var curtime = results[0]['now'];
+                    //Send a welcome PM if user hasn't joined in 36+ hours
+                    if ((new Date().getTime() - time.getTime()) > 129600000) {
+                        output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
             + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
             + '\'commands\' to see a list of commands I can respond to.',
             destination: 'pm', userid: user.userid});
+                    }
+                } else {
+                    output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
+            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
+            + '\'commands\' to see a list of commands I can respond to.',
+            destination: 'pm', userid: user.userid});
+                }
+        });
     }
     
     //Add user to user table
@@ -269,7 +290,7 @@ bot.on('speak', function (data) {
 	}
 
 	//Log in db (chatlog table)
-	if (config.database.usedb) {
+	if (config.database.usedb && config.database.logchat) {
 		client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
 			+ 'SET userid = ?, chat = ?, time = NOW()',
 			[data.userid, data.text]);
@@ -309,6 +330,13 @@ bot.on('endsong', function (data) {
     if (config.enforcement.enforceroom) {
         reducePastDJCounts(currentsong.djid);
     }
+    else {
+        for (i in djs) {
+            if (djs[i].id == currentsong.djid) {
+                djs[i].remaining++;
+            }
+        }
+    }
     
 
 	//Report song stats in chat
@@ -338,6 +366,8 @@ bot.on('newsong', function (data) {
 	if (usertostep != null) {
 		if (usertostep == config.botinfo.userid) {
 			bot.remDj(config.botinfo.userid);
+        } else if (usertostep == currentsong.djid) {
+            //
 		} else if (config.enforcement.enforceroom) {
 			enforceRoom();
 		}
@@ -400,7 +430,6 @@ bot.on('rem_dj', function (data) {
     if (legalstepdown) {
         enforcementtimeout = new Date();
     }
-    legalstepdown = true;
 
 	//Remove from dj list
 	for (i in djs) {
@@ -413,6 +442,13 @@ bot.on('rem_dj', function (data) {
     if (config.enforcement.enforceroom && config.enforcement.ffarules.multiplespotffa) {
         ffa = (djs.length < 4);
     }
+    
+    if ((config.enforcement.waitlist) && (waitlist.length > 0) && legalstepdown) {
+        bot.speak('The next spot is for @' + waitlist[0].name + '!');
+        output({text: 'Hey! This spot is yours, so go ahead and step up!', destination: 'pm',
+            userid: waitlist[0].id});
+    }
+    legalstepdown = true;
 });
 
 //Runs when a dj steps up
@@ -425,13 +461,19 @@ bot.on('add_dj', function(data) {
 	}
     
     //Add to DJ list
-    djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
+    if (config.enforcement.enforceroom) {
+        djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
+    } else {
+        djs.push({id: data.user[0].userid, remaining: 0});
+    }
     
+    if (config.enforcement.waitlist) {
+        checkWaitlist(data.user[0].userid, data.user[0].name);
+    }
     //See if this user is in the past djs list
-    if (config.enforcement.enforceroom && config.enforcement.stepuprules.waittostepup) {
+    else if (config.enforcement.enforceroom && config.enforcement.stepuprules.waittostepup) {
         checkStepup(data.user[0].userid, data.user[0].name);
     }
-        
     
 });
 
@@ -484,6 +526,8 @@ bot.on('pmmed', function(data) {
                 function cb(error, results, fields) {
                     if (results[0]['username'] != null) {
                         handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
+                    } else {
+                        handleCommand('PM user', data.senderid, data.text.toLowerCase(), 'pm');
                     }
             });
         } else {
@@ -504,6 +548,18 @@ bot.on('update_user', function(data) {
                 + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
                 [data.userid, data.name]);
         }
+});
+
+bot.on('new_moderator', function(data) {
+    moderators.push(data.userid);
+});
+
+bot.on('rem_moderator', function(data) {
+    for (i in moderators) {
+        if (moderators[i] == data.userid) {
+            moderators.splice(i, 1);
+        }
+    }
 });
 
 // Functions
@@ -661,11 +717,13 @@ function admincheck(userid) {
             return true;
         }
     }
+    
+    /**
     for (i in config.admins.admins) {
 		if (userid == config.admins.admins[i]) {
 			return true;
 		}
-	}
+	}*/
 	return false;
 }
 
@@ -803,6 +861,31 @@ function addToPastDJList(userid) {
     }
 }
 
+function addToWaitlist(userid, name, source) {
+    //Case 1: User is DJing already
+    for (i in djs) {
+        if (djs[i].id == userid) {
+            output({text: 'You\'re currently DJing!', destination: source, userid: userid});
+            return false;
+        }
+    }
+    
+    //Case 2: User is already in the waitlist
+    for (i in waitlist) {
+        if (waitlist[i].id == userid) {
+            output({text: 'You\'re already on the list, ' + name + '.', destination: source, 
+                userid: userid});
+            return false;
+        }
+    }
+    
+    //Otherwise, add to waitlist
+    waitlist.push({name: name, id: userid});
+    output({text: 'You\'ve been added to the queue. Your position is ' + waitlist.length + '.',
+        destination: source, userid: userid});
+    return true;
+}
+
 function checkStepup(userid, name) {
     //Get time elapsed between previous dj stepping down and this dj stepping up
     var waittime = new Date().getTime() - enforcementtimeout.getTime();
@@ -845,6 +928,22 @@ function checkStepup(userid, name) {
             }       
         }
     }
+}
+
+function checkWaitlist(userid, name) {
+    //If they're not first, remove/warn
+    if (waitlist[0].name == name) {
+        waitlist.shift();
+        return true;
+    }
+    if (waitlist.length > 0) {
+        bot.remDj(userid);
+        bot.speak(name + ', you\'re not next on the waitlist. Please let '
+            + waitlist[0].name + ' up.');
+        legalstepdown = false;
+        return false;
+    }
+    return true;
 }
 
 //Calculates the target number of bonus votes needed for bot to awesome
@@ -939,6 +1038,11 @@ bot.on('tcpMessage', function (socket, msg) {
         jsonmsg = JSON.parse(msg);
     } catch (e) {
         return;
+    }
+    
+    //If the message ends in a ^M character, remove it.
+    if (msg.substring(msg.length - 1).match(/\cM/)) {
+        msg = msg.substring(0, msg.length - 1);
     }
     
     var response = {response: 'INVALID QUERY'};
@@ -1052,10 +1156,7 @@ bot.on('tcpMessage', function (socket, msg) {
     socket.write(JSON.stringify(response));
     
     /**
-    //If the message ends in a ^M character, remove it.
-    	if (msg.substring(msg.length - 1).match(/\cM/)) {
-        	msg = msg.substring(0, msg.length - 1);
-    	}
+    
 	
 	//Have the bot speak in chat
 	if (msg.match(/^speak/)) {
@@ -1241,12 +1342,9 @@ function handleCommand (name, userid, text, source) {
     // User commands
     //--------------------------------------
     
-    case 'stagedive':
     case '/stagedive':
     case '/dive':
-    if (userid == usertostep) {
-        bot.remDj(usertostep);
-    }
+        bot.remDj(userid);
     break;
     
     //Outputs bot owner
@@ -1305,24 +1403,6 @@ function handleCommand (name, userid, text, source) {
                 output({text: response, destination: source, userid: userid});
 			}, 600);
 			break;
-            
-    //hugs support.
-    //Change xxMEOWxx, meow etc to bot name
-    case 'hugs xxmeowxx':
-    case 'hugs meow':
-        var rand = Math.random();
-        var timetowait = 1600;
-        if (rand < 0.4) {
-            setTimeout(function() {
-                output({text: 'Awww!', destination: source, userid: userid});
-            }, 1500);
-            timetowait += 600;
-        }
-        setTimeout(function() {
-            var response = ('hugs ' + name);
-            output({text: response, destination: source, userid: userid});
-        }, timetowait);
-        break;
         
     //Returns the number of each type of laptop present in the room
     case 'platforms':
@@ -1431,7 +1511,13 @@ function handleCommand (name, userid, text, source) {
         if (config.enforcement.enforceroom) {
             var response = '';
             for (i in djs) {
-                response += usersList[djs[i].id].name + ' (' + djs[i].remaining + ' songs left), ';
+                response += usersList[djs[i].id].name + ' (' + djs[i].remaining + ' song(s) left), ';
+            }
+            output({text: response.substring(0, response.length - 2), destination: source, userid: userid});
+        } else {
+            var response = '';
+            for (i in djs) {
+                response += usersList[djs[i].id].name + ' (played ' + djs[i].remaining + '), ';
             }
             output({text: response.substring(0, response.length - 2), destination: source, userid: userid});
         }
@@ -1463,7 +1549,72 @@ function handleCommand (name, userid, text, source) {
                 + Math.floor(cur/1000) + ' seconds.');
         output({text: response, destination: source, userid: userid});
         break;
+        
+    //--------------------------------------
+    // Queue/Waitlist Commands
+    //--------------------------------------
+    case '.add':
+    case '.addme':
+    case '+q':
+        if (config.enforcement.waitlist) {
+            addToWaitlist(userid, name, source);
+        }
+        break;
+        
+    case '.rem':
+    case '.remove':
+    case '.removeme':
+    case '-q':
+        if (config.enforcement.waitlist) {
+            for (i in waitlist) {
+                if (waitlist[i].name == name) {
+                    waitlist.splice(i, 1);
+                    output({text: 'You\'ve been removed from the queue.', destination: source, 
+                        userid: userid});
+                }
+            }
+        }
+        break;
     
+    case '.removefirst':
+    case 'shiftqueue':
+    case '.shiftq':
+    case 'shiftq':
+        if (config.enforcement.waitlist && admincheck(userid)) {
+            var removed = waitlist.shift();
+            if (removed != null) {
+                output({text: removed.name + ' has been removed from the queue.',
+                    destination: source, userid: userid});
+            }
+        }
+        break;
+        
+    case '.position':
+        if (config.enforcement.waitlist) {
+            var j = 0;
+            for (i in waitlist) {
+                j++;
+                if (waitlist[i].name == name) {
+                    output({text: 'Your position in the queue is #' + j + '.', destination: source,
+                        userid: userid});
+                }
+            }
+        }
+        break;
+        
+    case '.pq':
+    case 'printqueue':
+        if (config.enforcement.waitlist) {
+            var response = 'Queue: ';
+            var j = 0;
+            for (i in waitlist) {
+                j++;
+                response += ('[' + j + '] ' + waitlist[i].name + ', ');
+            }
+            output({text: response.substring(0, response.length - 2), destination: source,
+                userid: userid});
+        }
+        break;
         
     //--------------------------------------
     // Last.fm Queries
@@ -1870,6 +2021,21 @@ function handleCommand (name, userid, text, source) {
         }
         break;
         
+    case 'onetwothreefour':
+    case 'one two three four':
+    case '.scott':
+    case '.pilgrim':
+     if (config.database.usedb) {
+            client.query('SELECT * FROM SCOTT_PILGRIM ORDER BY RAND() LIMIT 1',
+                function selectCb(error, results, fields) {
+                    if (results[0] != null) {
+                        var response = (results[0]['quote']);
+                        output({text: response, destination: source, userid: userid});
+                    }
+            });
+        }
+        break;
+        
     //--------------------------------------
     // Admin-only commands
     //--------------------------------------
@@ -1905,20 +2071,6 @@ function handleCommand (name, userid, text, source) {
             }
         }
         break;
-        
-    //Step up to DJ
-    case 'meow, step up':
-        if (admincheck(userid)) {
-            bot.addDj();
-        }
-        break;
-
-    //Step down if DJing
-    case 'meow, step down':
-        if (admincheck(userid)) {
-            bot.remDj(config.botinfo.userid);
-        }
-        break;
 
     //Bot freakout
     case 'oh my god meow':
@@ -1938,16 +2090,6 @@ function handleCommand (name, userid, text, source) {
             }, 5600);
         }
         break;
-
-    //Shuts down bot (only the main admin can run this)
-    //Disconnects from room, exits process.
-    case 'meow, shut down':
-        if (userid == config.admins.mainadmin) {
-            bot.speak('Shutting down...');
-            bot.roomDeregister();
-            process.exit(0);
-        }
-        break;
     
     //Restarts bot (if keepalive script is used)
     case 'meow, restart':
@@ -1963,14 +2105,64 @@ function handleCommand (name, userid, text, source) {
     // Matching commands (regex)
     //--------------------------------------
     
+    //Shuts down bot (only the main admin can run this)
+    //Disconnects from room, exits process.
+    if (text.toLowerCase() == (botname + ', shut down')) {
+        if (userid == config.admins.mainadmin) {
+            bot.speak('Shutting down...');
+            bot.roomDeregister();
+            process.exit(0);
+        }
+    }
+    
+    //Have the bot step up to DJ
+    if (text.toLowerCase() == (botname + ', step up')) {
+        if (admincheck(userid)) {
+            bot.addDj();
+        }
+    }
+    
+    //Have the bot jump off the decks
+    if (text.toLowerCase() == (botname + ', step down')) {
+        if (admincheck(userid)) {
+            bot.remDj(config.botinfo.userid);
+        }
+    }
+    
+    //Hug bot
+    if (text.toLowerCase() == ('hugs ' + botname) || text.toLowerCase() == 'hugs meow') {
+        var rand = Math.random();
+        var timetowait = 1600;
+        if (rand < 0.4) {
+            setTimeout(function() {
+                output({text: 'Awww!', destination: source, userid: userid});
+            }, 1500);
+            timetowait += 600;
+        }
+        setTimeout(function() {
+            var response = ('hugs ' + name);
+            output({text: response, destination: source, userid: userid});
+        }, timetowait);
+    }
+    
+    if (text.toLowerCase().match(/^setavatar/)) {
+        if (admincheck(userid)) {
+            bot.setAvatar(text.substring(10));
+        }
+    }
+    
     if (text.toLowerCase().match(/^bootuser/)) {
+        /**
         if (admincheck(userid)) {
             for (i in usersList) {
                 if (usersList[i].name.toLowerCase() == text.substring(9)) {
                     bot.boot(i, 'Test boot from another room');
                 }
+                
             }
-        }
+        }*/
+        
+        bot.boot(userid, 'Stop abusing this feature. :sandal:');
     }
     
     //Checks if a user can step up as per room rules or if they must wait
@@ -1980,7 +2172,7 @@ function handleCommand (name, userid, text, source) {
     }
     
     //Sends a PM to the user
-    if (text.toLowerCase().match(/^meow, pm me/)) {
+    if (text.toLowerCase() == (botname + ', pm me')) {
         if (source == 'speak') {
             bot.pm('Hey there! Type "commands" for a list of commands.', userid);
         } else if (source == 'pm') {
@@ -1991,7 +2183,9 @@ function handleCommand (name, userid, text, source) {
     if (text.toLowerCase().match(/^skipwait/)) {
         if (admincheck(userid)) {
             for (i in usersList) {
-                if (usersList[i].name.toLowerCase() == text.substring(9)) {
+                //TODO: This doesn't work
+                if (usersList[i].name.toLowerCase().match(new RegExp('^@?' + text.substring(9), 'i')))
+                {
                     for (j in pastdjs) {
                         if (pastdjs[j].id == i) {
                             pastdjs.splice(j, 1);
