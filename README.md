@@ -2,7 +2,9 @@
 
 A customizable Turntable.fm bot.
 
-This is still early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms.
+This bot is still relatively early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms. Please report any bugs you find.
+
+NOTE: If you're having problems with config.json, please run your config.json file through a JSON validator such as [http://jsonlint.com/](http://jsonlint.com/).
 
 ## Installation
 
@@ -16,7 +18,8 @@ To run the bot, you'll need the following installed:
 
 ## Run
 
-* Fill out the config.json file (instructions [here](Sparkle-Turntable-Bot/blob/master/CONFIG.md)) with your bot account's user ID, auth code, target room ID, admin ID info, and other options
+* (OS X Users) Use SparkleConfig.app to create your config.json file for the bot.
+* (Windows/Linux Users) Fill out the config.json file (instructions [here](Sparkle-Turntable-Bot/blob/master/CONFIG.md)) with your bot account's user ID, auth code, target room ID, admin ID info, and other options
   - If you do not plan to use the database features or do not want to install mysql, set database.usedb to FALSE
   - If you want your bot to enforce room rules, fill out the enforcement section; otherwise, set enforcement.enforceroom to FALSE
 * If you plan on using a database, create new tables using the .sql files provided (the songlist, userlist, and chatlog tables will be created for you)
@@ -42,10 +45,11 @@ The bot can:
 * Awesome songs based on various systems
 * Log vote, chat, song, room events in the console
 * Report song stats in chat after each song
-* Welcome users to the room
+* Welcome users to the room via chat and PM
 * Enforce room rules regarding song limits and timeouts before a person can DJ again
-* Log song statistics and chat entries in a mysql database
+* Log song statistics and chat entries in a MySQL database
 * Receive and respond to instructions via TCP
+* Manage a waitlist/queue for a room
 
 ### Song Awesoming
 
@@ -73,10 +77,12 @@ This project includes several .sql files (currently, these files contain a list 
 
 ### Planned
 
-* A waitlist implementation
 * DJ timers for AFK monitoring
 * Graphical frontend to set config options
-* Fixing time-based wait-to-step-up rules so they actually work
+
+## Help
+
+If you have a **nontrivial** question, feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
 
 ## Commands
 
@@ -134,6 +140,18 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 
 * any spots opening soon?, anyone stepping down soon? - Displays the next DJ to step down, and how many songs they have remaining.
 
+### Waitlist commands
+
+* .add, .addme, +q - Adds user to waitlist/queue
+
+* .rem, .remove, .removeme - Removes user from waitlist/queue
+
+* shiftq, .shiftq, shiftqueue, .removefirst - Removes the first user from the waitlist/queue (e.g. if they're gone/AFK)
+
+* .position - Shows your position in the waitlist/queue
+
+* .pq, printqueue - Prints the waitlist/queue
+
 ### User database queries
 
 * stats - Gives overall room statistics (number of songs played, number of awesomes/lames, averages).
@@ -141,6 +159,10 @@ The bot will respond to these commands in chat in a Turntable.fm room.
 * past24hours - Displays the 3 most-awesomed DJs in the past 24 hours in the room.
 
 * mypast24hours - Displays your stats in the room over the past 24 hours.
+
+* pastweek - Displays the five most-awesomed DJs in the past week in the room.
+
+* mypastweek - Displays your stats in the room over the past 7 days.
 
 * bestplays - Returns the three song plays with the most awesomes logged by the bot.
 
@@ -187,6 +209,8 @@ These commands can only be performed by admins of the bot.
 
 * .l - Tells the bot to lame the current song.
 
+* skipwait [user] - (Enforcement only) Removes the user from the past DJ list so they can step up again.
+
 * pulldj - Pulls a DJ off stage after their song.
 
 * pullcurrent - Pulls the current DJ off stage during their song.
@@ -224,7 +248,3 @@ These commands can be performed via TCP access to the bot.
 * exit - Ends the TCP connection.
 
 * shutdown - Initiates the bot's shutdown sequence.
-
-## Help
-
-If you have a nontrivial question (please don't ask me how to install node.js or the MySQL community server, for example), feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
