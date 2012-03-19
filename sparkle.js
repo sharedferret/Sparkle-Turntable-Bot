@@ -222,26 +222,33 @@ bot.on('registered',   function (data) {
 	}
     
     if (config.responses.welcomepm) {
-        client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
-            + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
-            function cb(error, results, fields) {
-                if (results[0] != null) {
-                    var time = results[0]['lastseen'];
-                    var curtime = results[0]['now'];
-                    //Send a welcome PM if user hasn't joined in 36+ hours
-                    if ((new Date().getTime() - time.getTime()) > 129600000) {
+        if (config.database.usedb) {
+            client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
+                + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
+                function cb(error, results, fields) {
+                    if (results[0] != null) {
+                        var time = results[0]['lastseen'];
+                        var curtime = results[0]['now'];
+                        //Send a welcome PM if user hasn't joined in 36+ hours
+                        if ((new Date().getTime() - time.getTime()) > 129600000) {
+                            output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
+                            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
+                            + '\'commands\' to see a list of commands I can respond to.',
+                            destination: 'pm', userid: user.userid});
+                        }
+                    } else {
                         output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
-            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
-            + '\'commands\' to see a list of commands I can respond to.',
-            destination: 'pm', userid: user.userid});
+                            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
+                            + '\'commands\' to see a list of commands I can respond to.',
+                            destination: 'pm', userid: user.userid});
                     }
-                } else {
-                    output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
-            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
-            + '\'commands\' to see a list of commands I can respond to.',
-            destination: 'pm', userid: user.userid});
-                }
-        });
+            });
+        } else {
+            output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
+                + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
+                + '\'commands\' to see a list of commands I can respond to.',
+                destination: 'pm', userid: user.userid});
+        }
     }
     
     //Add user to user table
