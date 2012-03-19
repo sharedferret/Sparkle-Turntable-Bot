@@ -79,6 +79,13 @@ This project includes several .sql files (currently, these files contain a list 
 * DJ timers for AFK monitoring
 * Graphical frontend to set config options
 
+### Known Bugs
+
+* SparkleConfig.app generates incorrect JSON file if every field not filled in
+* "waitdjs" displays improper formatting in MINUTES wait-to-DJ mode
+* Bot may not DJ properly
+* Minutes-based wait-to-step-up mode may not work if only one DJ in room
+
 ## Help
 
 If you have a **nontrivial** question, feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
