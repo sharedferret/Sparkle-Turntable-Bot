@@ -18,8 +18,7 @@ To run the bot, you'll need the following installed:
 
 ## Run
 
-* (OS X Users) Use SparkleConfig.app to create your config.json file for the bot.
-* (Windows/Linux Users) Fill out the config.json file (instructions [here](Sparkle-Turntable-Bot/blob/master/CONFIG.md)) with your bot account's user ID, auth code, target room ID, admin ID info, and other options
+* Fill out the config.json file (instructions [here](Sparkle-Turntable-Bot/blob/master/CONFIG.md)) with your bot account's user ID, auth code, target room ID, admin ID info, and other options
   - If you do not plan to use the database features or do not want to install mysql, set database.usedb to FALSE
   - If you want your bot to enforce room rules, fill out the enforcement section; otherwise, set enforcement.enforceroom to FALSE
 * If you plan on using a database, create new tables using the .sql files provided (the songlist, userlist, and chatlog tables will be created for you)

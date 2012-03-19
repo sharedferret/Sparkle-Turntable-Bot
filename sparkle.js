@@ -531,7 +531,7 @@ bot.on('pmmed', function(data) {
             client.query('SELECT username FROM `USERS` WHERE userid LIKE \'' + data.senderid
                 + '\' ORDER BY lastseen DESC LIMIT 1',
                 function cb(error, results, fields) {
-                    if (results[0]['username'] != null) {
+                    if (results[0] != null) {
                         handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
                     } else {
                         handleCommand('PM user', data.senderid, data.text.toLowerCase(), 'pm');
