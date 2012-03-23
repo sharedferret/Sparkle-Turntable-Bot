@@ -1490,6 +1490,10 @@ function handleCommand (name, userid, text, source) {
         output({text: response, destination: source, userid: userid});
         break;
         
+    case 'keep it clexy':
+        output({text: 'Always.', destination: source, userid: userid});
+        break;
+        
     //Responds to reptar-related call
     case 'can you feel it!?':
         setTimeout(function() {
@@ -2214,7 +2218,7 @@ function handleCommand (name, userid, text, source) {
         }
     }
     
-    if (text.toLowerCase().match(/^.fq/) {
+    if (text.toLowerCase().match(/^.fq/)) {
         if (admincheck(userid)) {
             for (i in usersList) {
                 if (usersList[i].name.toLowerCase() == text.substring(4)) {
