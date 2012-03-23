@@ -14,10 +14,11 @@
  *
 */
 
-var version = '[experimental] 2012.03.16';
+var version = '[experimental] 2012.03.23';
 var botname = 'meow';
 
 var fs = require('fs');
+var url = require('url');
 
 var Bot;
 var config;
@@ -25,7 +26,6 @@ var mysql;
 var client;
 var request;
 var singalong;
-var enforcement;
 var uptime = new Date();
 var sockets = new Array();
 
@@ -36,6 +36,12 @@ var bot = new Bot(config.botinfo.auth, config.botinfo.userid);
 if (config.tcp.usetcp) {
 	bot.tcpListen(config.tcp.port, config.tcp.host);
 }
+
+//Create HTTP listeners
+/**
+if (true) {
+    bot.listen(6526, '10.212.102.249');
+}*/
 
 //Room information
 var usersList = { };                //A list of users in the room
@@ -718,19 +724,23 @@ function output(data) {
 
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
+//TODO: Remove mod list from config file, 2nd for loop
 function admincheck(userid) {
 	for (i in moderators) {
         if (userid == moderators[i]) {
             return true;
         }
     }
-    
-    /**
+
     for (i in config.admins.admins) {
 		if (userid == config.admins.admins[i]) {
 			return true;
 		}
-	}*/
+	}
+    
+    if (userid == config.admin.mainadmin) {
+        return true;
+    }
 	return false;
 }
 
@@ -1233,6 +1243,24 @@ bot.on('tcpMessage', function (socket, msg) {
 			break;
 		}*/
 });
+
+
+/**
+bot.on('httpRequest', function(request, response) {
+    var urlRequest = request.url;
+    var queryArray = url.parse(urlRequest, true).query;
+    console.log(queryArray);
+    if (queryArray.command == 'ping') {
+        if(queryArray.response == 'json') {
+            response.writeHead(200, {'Content-Type': 'text/plain'});
+            var rp = {alive: true, started: uptime};
+            response.end(JSON.stringify(rp));
+        } else {
+            response.writeHead(200, {'Content-Type': 'text/plain'});
+            response.end('Pong!\n');
+        }
+    }
+});*/
 
 //Handles chat commands
 function handleCommand (name, userid, text, source) {
@@ -2191,7 +2219,7 @@ function handleCommand (name, userid, text, source) {
         if (admincheck(userid)) {
             for (i in usersList) {
                 //TODO: This doesn't work
-                if (usersList[i].name.toLowerCase().match(new RegExp('^@?' + text.substring(9), 'i')))
+                if (usersList[i].name.toLowerCase() == text.substring(9))
                 {
                     for (j in pastdjs) {
                         if (pastdjs[j].id == i) {
