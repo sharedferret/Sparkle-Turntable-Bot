@@ -2186,6 +2186,7 @@ function handleCommand (name, userid, text, source) {
         }
     }
     
+    //Bot boot reference code
     if (text.toLowerCase().match(/^bootuser/)) {
         /**
         if (admincheck(userid)) {
@@ -2196,8 +2197,6 @@ function handleCommand (name, userid, text, source) {
                 
             }
         }*/
-        
-        bot.boot(userid, 'Stop abusing this feature. :sandal:');
     }
     
     //Checks if a user can step up as per room rules or if they must wait
@@ -2212,6 +2211,18 @@ function handleCommand (name, userid, text, source) {
             bot.pm('Hey there! Type "commands" for a list of commands.', userid);
         } else if (source == 'pm') {
             bot.pm('But... you PM\'d me that. Do you think I\'m stupid? >:T', userid);
+        }
+    }
+    
+    if (text.toLowerCase().match(/^.fq/) {
+        if (admincheck(userid)) {
+            for (i in usersList) {
+                if (usersList[i].name.toLowerCase() == text.substring(4)) {
+                    waitlist.unshift(usersList[i].name);
+                    output({text: usersList[i].name + ' has been added to the start of the queue.',
+                        destination: source, userid: userid});
+                }
+            }
         }
     }
     
