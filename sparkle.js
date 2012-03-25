@@ -15,7 +15,6 @@
 */
 
 var version = '[experimental] 2012.03.23';
-var botname = 'meow';
 
 var fs = require('fs');
 var url = require('url');
@@ -33,15 +32,16 @@ initializeModules();
 
 //Creates the bot and initializes global vars
 var bot = new Bot(config.botinfo.auth, config.botinfo.userid);
+
+//Create TCP listeners
 if (config.tcp.usetcp) {
 	bot.tcpListen(config.tcp.port, config.tcp.host);
 }
 
 //Create HTTP listeners
-/**
-if (true) {
-    bot.listen(6526, '10.212.102.249');
-}*/
+if (config.http.usehttp) {
+    bot.listen(config.http.port, config.http.host);
+}
 
 //Room information
 var usersList = { };                //A list of users in the room
@@ -510,9 +510,9 @@ bot.on('snagged', function(data) {
 
 bot.on('rem_moderator', function(data) {
     //If the bot admin was demodded, remod them
-	if(config.admins.mainadmin == data.userid) {
+	if(config.admin == data.userid) {
 		setTimeout(function() {
-			bot.addModerator(config.admins.mainadmin);
+			bot.addModerator(config.admin);
 		}, 200);
 	}
 });
@@ -724,21 +724,14 @@ function output(data) {
 
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
-//TODO: Remove mod list from config file, 2nd for loop
 function admincheck(userid) {
 	for (i in moderators) {
         if (userid == moderators[i]) {
             return true;
         }
     }
-
-    for (i in config.admins.admins) {
-		if (userid == config.admins.admins[i]) {
-			return true;
-		}
-	}
     
-    if (userid == config.admin.mainadmin) {
+    if (userid == config.admin) {
         return true;
     }
 	return false;
@@ -917,6 +910,9 @@ function checkStepup(userid, name) {
             else if (config.enforcement.ffarules.timerffa) {
                 legalstepdown = (waittime > (config.enforcement.ffarules.timeout * 1000));
             }
+            else {
+                legalstepdown = false;
+            }
             
             if (legalstepdown) {
                 for (i in pastdjs) {
@@ -1062,6 +1058,7 @@ bot.on('tcpMessage', function (socket, msg) {
         msg = msg.substring(0, msg.length - 1);
     }
     
+    //JSON message handler
     var response = {response: 'INVALID QUERY'};
     if (jsonmsg.command != null) {
         switch (jsonmsg.command) {
@@ -1171,96 +1168,65 @@ bot.on('tcpMessage', function (socket, msg) {
         }
     }
     socket.write(JSON.stringify(response));
-    
-    /**
-    
-	
-	//Have the bot speak in chat
-	if (msg.match(/^speak/)) {
-		bot.speak(msg.substring(6));
-		socket.write('>> Message sent\n');
-	}
-	
-	//Boot the given userid
-	//TODO: Change userid to user name
-	if (msg.match(/^boot/)) {
-		bot.boot(msg.substring(5));
-        socket.write('>> User booted\n');
-	}
-	
-	//Handle commands
-	switch (msg) {
-		case 'help':
-			socket.write('>> xxMEOWxx responds to the following commands in the console: '
-				+ 'online, .a,\n'
-                + '>> .l, step up, step down, speak [text], exit, shutdown\n');
-			break;
-		case 'online':
-			socket.write('>> ' + currentsong.listeners + '\n');
-			break;
-		case 'users':
-			var output = '>> ';
-			for (var i in usersList) {
-				output += (usersList[i].name) + ', ';
-			}
-			socket.write(output.substring(0,output.length - 2) + '\n');
-			break;
-		case 'nowplaying':
-			socket.write('>> ' + currentsong.artist + ' - ' + currentsong.song
-				+ '\n>> DJ ' + currentsong.djname + ' +' + currentsong.up 
-				+ ' -' + currentsong.down + '\n');
-			break;
-		case '.a':
-			bot.vote('up');
-			socket.write('>> Awesomed\n');
-			break;
-		case '.l':
-			bot.vote('down');
-			socket.write('>> Lamed\n');
-			break;
-		case 'step up':
-			bot.addDj();
-			socket.write('>> Stepped up\n');
-			break;
-		case 'step down':
-			bot.remDj(config.botinfo.userid);
-			socket.write('>> Stepped down\n');
-			break;
-		case 'pulldj':
-			bot.remDj(usertostep);
-			socket.write('>> DJ removed\n');
-			break;
-		case 'exit':
-			socket.write('>> Goodbye!\n');
-			socket.end();
-			break;
-		case 'shutdown':
-			socket.write('>> Shutting down...\n');
-			bot.speak('Shutting down...');
-			socket.end();
-			bot.roomDeregister();
-			process.exit(0);
-			break;
-		}*/
 });
 
 
-/**
 bot.on('httpRequest', function(request, response) {
     var urlRequest = request.url;
     var queryArray = url.parse(urlRequest, true).query;
     console.log(queryArray);
-    if (queryArray.command == 'ping') {
-        if(queryArray.response == 'json') {
-            response.writeHead(200, {'Content-Type': 'text/plain'});
-            var rp = {alive: true, started: uptime};
-            response.end(JSON.stringify(rp));
-        } else {
-            response.writeHead(200, {'Content-Type': 'text/plain'});
-            response.end('Pong!\n');
-        }
+    switch (queryArray.command) {
+        case 'ping':
+            if(queryArray.response == 'json') {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'ping', alive: true, value: uptime};
+                response.end(JSON.stringify(rp));
+            } else {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                response.end('Pong!\n');
+            }
+            break;
+            
+        case 'online':
+            if(queryArray.response == 'json') {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'online', value: currentsong.listeners};
+                response.end(JSON.stringify(rp));
+            } else {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                response.end('There are ' + currentsong.listeners + ' users online.\n');
+            }
+            break;
+        
+        case 'users':
+            if(queryArray.response == 'json') {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'users', value: usersList};
+                response.end(JSON.stringify(rp));
+            } else {
+                var output = '';
+                for (var i in usersList) {
+                    output += (usersList[i].name) + ', ';
+                }
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                response.end('Users online: ' + output.substring(0, output.length - 2) + '\n');
+            }
+            break;
+            
+        case 'nowplaying':
+            if(queryArray.response == 'json') {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'nowplaying', value: currentsong};
+                response.end(JSON.stringify(rp));
+            } else {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                response.end('Current song: ' + currentsong.artist + ' - ' + currentsong.song
+                    + '\nDJ ' + currentsong.djname + ' (+' + currentsong.up + '/-'
+                    + currentsong.down + ')\n');
+            }
+            break;        
     }
-});*/
+});
 
 //Handles chat commands
 function handleCommand (name, userid, text, source) {
@@ -2132,7 +2098,7 @@ function handleCommand (name, userid, text, source) {
     
     //Restarts bot (if keepalive script is used)
     case 'meow, restart':
-        if (userid == config.admins.mainadmin) {
+        if (userid == config.admin) {
             bot.speak('Back in 10 seconds! Rebooting...');
             bot.roomDeregister();
             process.exit(1);
@@ -2146,8 +2112,8 @@ function handleCommand (name, userid, text, source) {
     
     //Shuts down bot (only the main admin can run this)
     //Disconnects from room, exits process.
-    if (text.toLowerCase() == (botname + ', shut down')) {
-        if (userid == config.admins.mainadmin) {
+    if (text.toLowerCase() == (config.botinfo.botname + ', shut down')) {
+        if (userid == config.admin) {
             bot.speak('Shutting down...');
             bot.roomDeregister();
             process.exit(0);
@@ -2155,21 +2121,21 @@ function handleCommand (name, userid, text, source) {
     }
     
     //Have the bot step up to DJ
-    if (text.toLowerCase() == (botname + ', step up')) {
+    if (text.toLowerCase() == (config.botinfo.botname + ', step up')) {
         if (admincheck(userid)) {
             bot.addDj();
         }
     }
     
     //Have the bot jump off the decks
-    if (text.toLowerCase() == (botname + ', step down')) {
+    if (text.toLowerCase() == (config.botinfo.botname + ', step down')) {
         if (admincheck(userid)) {
             bot.remDj(config.botinfo.userid);
         }
     }
     
     //Hug bot
-    if (text.toLowerCase() == ('hugs ' + botname) || text.toLowerCase() == 'hugs meow') {
+    if (text.toLowerCase() == ('hugs ' + config.botinfo.botname) || text.toLowerCase() == 'hugs meow') {
         var rand = Math.random();
         var timetowait = 1600;
         if (rand < 0.4) {
@@ -2210,7 +2176,7 @@ function handleCommand (name, userid, text, source) {
     }
     
     //Sends a PM to the user
-    if (text.toLowerCase() == (botname + ', pm me')) {
+    if (text.toLowerCase() == (config.botinfo.botname + ', pm me')) {
         if (source == 'speak') {
             bot.pm('Hey there! Type "commands" for a list of commands.', userid);
         } else if (source == 'pm') {

@@ -1,11 +1,9 @@
 {"botinfo":
 	{"auth":"auth+live+#####",
 	"userid":"#####",
-	"laptoptype":"chrome"},
+	"botname":"meow"},
 "roomid":"4f1e02590c4cc807574030f1",
-"admins":
-	{"mainadmin":"#####",
-	"admins": ["#####"] },
+"admin":"#####",
 "database":
 	{"usedb":true,
 	"dbname":"nodejs_mysql_treehouse", 
@@ -25,6 +23,10 @@
 	 {"usetcp": true, 
 	"port": 8180, 
 	"host": "localhost"},
+"http":
+    {"usehttp": true,
+    "port": 8181,
+    "host": "localhost"},
 "responses":
 	{"respond":true,
 	"reportsongstats":true,
