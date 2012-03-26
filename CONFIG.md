@@ -11,20 +11,19 @@ Remember to rename your config file to config.json before running your bot!
 	botinfo
 		auth: Your bot's auth code.
 		userid: Your bot's user id.
-		laptoptype: What laptop you want your bot to have (pc, mac, linux, chrome, iphone)
+		botname: Your bot's short name (for commands like [name], pm me)
 		To find your auth/userid: http://alaingilbert.github.com/Turntable-API/bookmarklet.html
 	roomid: The room you want your bot to be placed in.
-	admins
-		mainadmin: Your user id.
-		admins: An array of admins for your bot (include yourself!)
+	admin: Your user id.
 	database
 		usedb: Set to true if you want to use a database, false otherwise.
+		logchat: Set to true if you want to log chat, false otherwise.
 		dbname: The name of your mysql database.
 		tablenames
 			song: The name of your song table.
-			chat: The name of your chatlog table.
+			chat: The name of your chatlog table (name this even if you have logchat set to false)
 			user: The name of your userlist table.
-			holiday: The name of your holiday greeting table.
+			holiday: The name of your holiday greeting table
 		login
 			user: Your bot's mysql login
 			password: Your bot's mysql login password
@@ -32,6 +31,11 @@ Remember to rename your config file to config.json before running your bot!
 		useapi: Set to true to use the last.fm service, false otherwise.
 		lastfmkey: Your last.fm api key.
 		Obtain an API key at http://www.last.fm/api/ or disable under Flags
+	http
+		usehttp: Set to true to enable HTTP connections, false otherwise.
+		port: The port you want to listen on.
+		host: The host you want to listen on (Use your computer's internal IP
+			if you want to listen to external connections, localhost otherwise)
 	tcp
 		usetcp: Set to true to enable TCP connections, false otherwise.
 		port: The port you want to listen on.
@@ -51,6 +55,7 @@ Remember to rename your config file to config.json before running your bot!
 	bonusvote: The bot can awesome songs in one of five modes: NONE, VOTE, CHAT, DICE, AUTO.
 	enforcement
 		enforceroom: Set to true to have the bot enforce room rules
+		waitlist: Set to true to have the bot enforce a waitlist/queue
 		songstoplay: How many songs a user can play before they must step down
 		stepuprules
 			waittostepup: Toggles this section on/off
@@ -60,6 +65,5 @@ Remember to rename your config file to config.json before running your bot!
 			multiplespotffa: Make all spots free-for-all if there are 2+ DJ spots open
 			timerffa: Make a spot free-for-all after a certain period of time
 			timeout: The timer for timerffa in seconds
-		waitlist: not implemented yet
 	maintenance
 		autorejoin: Have the bot rejoin if booted
