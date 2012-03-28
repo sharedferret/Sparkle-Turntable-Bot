@@ -52,7 +52,7 @@
 	"ffarules":
 		{"multiplespotffa":true,
 		"timerffa":true,
-		"timeout":10},
+		"timeout":10}
     }, 
 "maintenance": 
 	{"autorejoin": true}}
