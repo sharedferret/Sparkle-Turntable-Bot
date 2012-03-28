@@ -19,6 +19,15 @@ var version = '[experimental] 2012.03.23';
 var fs = require('fs');
 var url = require('url');
 
+//Not fully implemented yet
+var parser;
+try {
+    xml2js = require('xml2js');
+    var parser = new xml2js.Parser();
+} catch (e) {
+    //
+}
+
 var Bot;
 var config;
 var mysql;
@@ -1682,6 +1691,27 @@ function handleCommand (name, userid, text, source) {
                         output({text: response, destination: source, userid: userid});
                     }
             });
+        }
+        break;
+        
+        
+    //WOO USELESS FUNCTIONS
+    case '.quake':
+        if (parser != null) {
+        request('http://earthquake.usgs.gov/earthquakes/catalogs/1day-M2.5.xml', 
+        function (error, response, body) {
+            parser.parseString(body, function (err, result) {
+                var earthquakes = result.entry;
+                var rp = 'Recent earthquakes: ';
+                for (var i = 0; i < earthquakes.length && i < 3; i++) {
+                    var timeelapsed = new Date() - new Date(earthquakes[i].updated);
+                    var hrs = Math.floor(timeelapsed/60000/60);
+                    var mins = Math.floor((timeelapsed%(1000*60*60)) / 60000);
+                    rp += earthquakes[i].title + ' (' + hrs + 'h ' + mins + 'm ago). ';
+                }
+                output({text: rp, destination: source, userid: userid});
+            });
+        });
         }
         break;
     
