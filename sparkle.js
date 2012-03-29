@@ -19,20 +19,12 @@ var version = '[experimental] 2012.03.23';
 var fs = require('fs');
 var url = require('url');
 
-//Not fully implemented yet
-var parser;
-try {
-    xml2js = require('xml2js');
-    var parser = new xml2js.Parser();
-} catch (e) {
-    //
-}
-
 var Bot;
 var config;
 var mysql;
 var client;
 var request;
+var parser;
 var singalong;
 var uptime = new Date();
 var sockets = new Array();
@@ -652,6 +644,13 @@ function initializeModules() {
             + '\nUse the command \'npm install request\' to install.');
         process.exit(0);
     }
+    
+    try {
+        xml2js = require('xml2js');
+        parser = new xml2js.Parser();
+    } catch(e) {
+        //
+    }
 }
 
 //Sets up the database
@@ -744,6 +743,11 @@ function admincheck(userid) {
         return true;
     }
 	return false;
+}
+
+//TODO: Implement
+function checkAuth(givenKey) {
+    return false;
 }
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
@@ -1074,6 +1078,7 @@ bot.on('tcpMessage', function (socket, msg) {
         
             //Get commands
             
+            //Deprecated
             case 'sendonlineevents':
                 for (i in sockets) {
                     if (sockets[i].socket == socket) {
@@ -1087,6 +1092,7 @@ bot.on('tcpMessage', function (socket, msg) {
                 }
                 break;
                 
+            //Deprecated
             case 'sendvoteevents':
                 for (i in sockets) {
                     if (sockets[i].socket == socket) {
@@ -1120,6 +1126,7 @@ bot.on('tcpMessage', function (socket, msg) {
             case 'currentsong':
                 response = {response: 'currentsong', value: currentsong};
                 break;
+                
                 
             case 'speak':
                 bot.speak(jsonmsg.parameter);
@@ -1182,13 +1189,14 @@ bot.on('tcpMessage', function (socket, msg) {
 
 bot.on('httpRequest', function(request, response) {
     var urlRequest = request.url;
-    var queryArray = url.parse(urlRequest, true).query;
+    var queryArray = url.parse(urlRequest, true).query; //HTTP GET requests
+    
     console.log(queryArray);
     switch (queryArray.command) {
         case 'ping':
             if(queryArray.response == 'json') {
                 response.writeHead(200, {'Content-Type': 'text/plain'});
-                var rp = {response: 'ping', alive: true, value: uptime};
+                var rp = {response: 'ping', value: uptime};
                 response.end(JSON.stringify(rp));
             } else {
                 response.writeHead(200, {'Content-Type': 'text/plain'});
@@ -1233,7 +1241,130 @@ bot.on('httpRequest', function(request, response) {
                     + '\nDJ ' + currentsong.djname + ' (+' + currentsong.up + '/-'
                     + currentsong.down + ')\n');
             }
-            break;        
+            break;   
+        
+        case 'speak':
+            if (checkAuth(queryArray.auth)) {
+                
+            }
+            break;
+            
+        case 'boot':
+            if (checkAuth(queryArray.auth)) {
+                for (i in usersList) {
+                    if (queryArray.name == usersList[i].name) {
+                        bot.boot(i, queryArray.reason);
+                    }
+                }
+            }
+            break;
+            
+        case 'config.get':
+            if (checkAuth(queryArray.auth)) {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'config', value: config};
+                response.end(JSON.stringify(rp));
+            }
+            break;
+        
+        case 'vote':
+            if (checkAuth(queryArray.auth)) {
+                if (queryArray.vote == 'up') {
+                    bot.vote('up');
+                } else if (queryArray.vote == 'down') {
+                    bot.vote('down');
+                }
+            }
+            break;
+        
+        case 'stepup':
+            if (checkAuth(queryArray.auth)) {
+                bot.addDj();
+            }
+            break;
+        
+        case 'stepdown':
+            if (checkAuth(queryArray.auth)) {
+                bot.remDj(config.botinfo.userid);
+            }
+            break;
+        
+        case 'pulldj':
+            if (checkAuth(queryArray.auth)) {
+                bot.remDj(usertostep);
+            }
+            break;
+        
+        case 'config.set':
+            if (checkAuth(queryArray.auth)) {
+                //
+            }
+            break;
+        
+        case 'djs.info':
+            if(queryArray.response == 'json') {
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                var rp = {response: 'djs.info', value: djs};
+                response.end(JSON.stringify(rp));
+            } else {
+                if (config.enforcement.enforceroom) {
+                    response.writeHead(200, {'Content-Type': 'text/plain'});
+                    var rp = '';
+                    for (i in djs) {
+                        rp += usersList[djs[i].id].name + ' (' 
+                            + djs[i].remaining + ' song(s) left), ';
+                    }
+                    response.end(rp.substring(0, rp.length - 2));
+                } else {
+                    response.writeHead(200, {'Content-Type': 'text/plain'});
+                    var rp = '';
+                    for (i in djs) {
+                        rp += usersList[djs[i].id].name + ' (played '
+                            + djs[i].remaining + '), ';
+                    }
+                    response.end(rp.substring(0, rp.length - 2));
+                }
+            }
+            break;
+        
+        case 'djs.wait':
+            if (config.enforcement.enforceroom) {
+                if (queryArray.response == 'json') {
+                    response.writeHead(200, {'Content-Type': 'text/plain'});
+                    var rp = {response: 'djs.wait', value: pastdjs};
+                    response.end(JSON.stringify(rp));
+                } else {
+                    var pastdjnames = 'These DJs must wait before stepping up again: ';
+                    for (i in pastdjs) {
+                        if (usersList[pastdjs[i].id] != null) {
+                            //TODO: Change to songs/minutes
+                            pastdjnames += usersList[pastdjs[i].id].name
+                                + ' (' + pastdjs[i].wait + ' songs), ';
+                        }
+                    }
+                    response.writeHead(200, {'Content-Type': 'text/plain'});
+                    response.end(pastdjnames.substring(0, pastdjnames.length - 2));
+                }
+            }
+            break;
+        
+        case 'queue.print':
+            if (config.enforcement.waitlist) {
+                var rp = 'Queue:\n';
+                for (i in waitlist) {
+                    j++;
+                    rp += '[' + j + ']' + waitlist[i].name + '\n';
+                }
+                response.writeHead(200, {'Content-Type': 'text/plain'});
+                response.end(rp);
+            }
+            break;
+        
+        case 'queue.add':
+            if (config.enforcement.waitlist) {
+                //
+            }
+            break;
     }
 });
 
@@ -1246,11 +1377,6 @@ function handleCommand (name, userid, text, source) {
     
     
         case 'commands':
-        
-        var response = 'commands: .owner, .source, mystats, bonus, points, rules, ping, '
-            + 'platforms, reptar, mostplayed, mostawesomed, mostlamed, mymostplayed, '
-            + 'mymostawesomed, mymostlamed, totalawesomes, mostsnagged, '
-            + 'pastnames [username], .similar, .similarartists, ';
         
         var response = 'Commands: ping, reptar, rules, platforms, .owner, .source, /roll, '
             + 'version, hugs meow, .hodor, uptime, ';
