@@ -625,7 +625,7 @@ function initializeModules() {
 
         //Connects to mysql server
         try {
-            client = mysql.createClient(config.database.login);
+            client = mysql.createClient([config.database.login.user, config.database.login.password, config.database.dbname]);
         } catch(e) {
             console.log(e);
             console.log('Make sure that a mysql server instance is running and that the '
@@ -656,13 +656,13 @@ function initializeModules() {
 //Sets up the database
 function setUpDatabase() {
 //Creates DB and tables if needed, connects to db
-    client.query('CREATE DATABASE ' + config.database.dbname,
-        function(error) {
-            if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
-                throw (error);
-            }
-    });
-    client.query('USE '+ config.database.dbname);
+    //client.query('CREATE DATABASE ' + config.database.dbname,
+    //    function(error) {
+    //        if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
+    //            throw (error);
+    //        }
+    //});
+    //client.query('USE '+ config.database.dbname);
 
     //song table
     client.query('CREATE TABLE ' + config.database.tablenames.song
