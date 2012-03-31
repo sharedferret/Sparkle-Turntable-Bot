@@ -625,7 +625,7 @@ function initializeModules() {
 
         //Connects to mysql server
         try {
-            client = mysql.createClient([config.database.login.user, config.database.login.password, config.database.dbname]);
+            client = mysql.createClient({user: config.database.login.user, password: config.database.login.password, database: config.database.dbname});
         } catch(e) {
             console.log(e);
             console.log('Make sure that a mysql server instance is running and that the '
