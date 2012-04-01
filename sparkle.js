@@ -957,12 +957,12 @@ function checkStepup(userid, name) {
 }
 
 function checkWaitlist(userid, name) {
-    //If they're not first, remove/warn
-    if (waitlist[0].name == name) {
-        waitlist.shift();
-        return true;
-    }
     if (waitlist.length > 0) {
+        //If they're not first, remove/warn
+        if (waitlist[0].name == name) {
+            waitlist.shift();
+            return true;
+        }
         bot.remDj(userid);
         bot.speak(name + ', you\'re not next on the waitlist. Please let '
             + waitlist[0].name + ' up.');
