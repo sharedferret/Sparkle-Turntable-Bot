@@ -380,9 +380,7 @@ bot.on('newsong', function (data) {
 	if (usertostep != null) {
 		if (usertostep == config.botinfo.userid) {
 			bot.remDj(config.botinfo.userid);
-        } else if (usertostep == currentsong.djid) {
-            //
-		} else if (config.enforcement.enforceroom) {
+        } else if (config.enforcement.enforceroom) {
 			enforceRoom();
 		}
 	}
@@ -799,7 +797,7 @@ function welcomeUser(name, id) {
             client.query('SELECT greeting FROM ' + config.database.dbname + '.'
                 + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
                 function cbfunc(error, results, fields) {
-                    if (results[0] != null) {
+                    if (results != null && results[0] != null) {
                         bot.speak(results[0]['greeting'] + ', ' + name + '!');
                     } else {
                         bot.speak(config.responses.greeting + name + '!');
@@ -1350,6 +1348,7 @@ bot.on('httpRequest', function(request, response) {
         
         case 'queue.print':
             if (config.enforcement.waitlist) {
+                var j = 0;
                 var rp = 'Queue:\n';
                 for (i in waitlist) {
                     j++;
@@ -1364,6 +1363,13 @@ bot.on('httpRequest', function(request, response) {
             if (config.enforcement.waitlist) {
                 //
             }
+            break;
+        
+        case 'debug':
+            response.writeHead(200, {'Content-Type': 'text/plain'});
+            var rp = {usertostep: usertostep, userstepped: userstepped, ffa: ffa, legalstepdown: legalstepdown,
+                        pastdjs: pastdjs, djs: djs, waitlist: waitlist, currentsong: currentsong};
+            response.end(JSON.stringify(rp));
             break;
     }
 });
@@ -1408,7 +1414,7 @@ function handleCommand (name, userid, text, source) {
             
         output({text: response, destination: source, userid: userid});
         break;
-    
+
     //--------------------------------------
     // Bonus points
     //--------------------------------------
