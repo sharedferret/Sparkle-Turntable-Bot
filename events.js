@@ -154,7 +154,7 @@ exports.registeredEventHandler = function (data) {
             client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
                 + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
                 function cb(error, results, fields) {
-                    if (results[0] != null) {
+                    if (results != null && results[0] != null) {
                         var time = results[0]['lastseen'];
                         var curtime = results[0]['now'];
                         //Send a welcome PM if user hasn't joined in 36+ hours
