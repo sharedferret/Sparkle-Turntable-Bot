@@ -14,7 +14,7 @@
  *
 */
 
-global.version = '[experimental] 2012.04.06';
+global.version = '[Sparkle] Version 1.0b1';
 
 global.fs = require('fs');
 global.url = require('url');
@@ -30,6 +30,7 @@ global.singalong;
 global.uptime = new Date();
 global.sockets = new Array();
 global.commands = new Array();              //Array of command handlers
+global.httpcommands = new Array();          //Array of HTTP handlers
 global.events = require('./events.js');     //Event handlers
 
 initializeModules();
@@ -232,6 +233,18 @@ function initializeModules () {
     } catch (e) {
     
     }
+    
+    //Load http commands
+    try {
+        var filenames = fs.readdirSync('./api');
+        for (i in filenames) {
+            var command = require('./api/' + filenames[i]);
+            httpcommands.push({name: command.name, handler: command.handler, hidden: command.hidden,
+                enabled: command.enabled});
+        }
+    } catch (e) {
+    
+    }
 }
 
 //Sets up the database
@@ -303,11 +316,20 @@ global.populateSongData = function(data) {
 	currentsong.snags = 0;
 }
 
+//Format: output({text: [required], destination: [required],
+//                userid: [required for PM], format: [optional]});
 global.output = function (data) {
     if (data.destination == 'speak') {
         bot.speak(data.text);
     } else if (data.destination == 'pm') {
         bot.pm(data.text, data.userid);
+    } else if (data.destination == 'http') {
+        response.writeHead(200, {'Content-Type': 'text/plain'});
+        if (data.format == 'json') {
+            response.end(JSON.stringify(data.text));
+        } else {
+            response.end(data.text);
+        }
     }
 }
 
