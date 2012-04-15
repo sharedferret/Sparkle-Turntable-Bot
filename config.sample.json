@@ -29,6 +29,7 @@
     "host": "localhost"},
 "responses":
 	{"respond":true,
+    "announcebonus":true,
 	"reportsongstats":true,
 	"welcomeusers":true,
     "welcomepm":true,

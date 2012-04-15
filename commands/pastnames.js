@@ -11,9 +11,9 @@ exports.handler = function(data) {
             [data.text.substring(10)],
             function select(error, results, fields) {
                 var response = '';
-                if (results != null && results.length > 9) {
+                if (results != null && results.length > 6) {
                     response = 'That user has gone by ' + results.length + ' names, including: ';
-                    for (i = 0; i < 9; i++) {
+                    for (i = 0; i < 6; i++) {
                         response += results[i]['username'] + ', ';
                     }
                 } else {
