@@ -13,11 +13,11 @@
  *  is enabled in the config file)
  *
 */
-
-global.version = '[Sparkle] Version 1.0b1';
+var args = process.argv;
+global.version = '[Sparkle] Version 1.0b2';
 
 global.fs = require('fs');
-global.url = require('url');
+global.url = require('url'); 
 
 global.Bot;
 global.bot;
@@ -32,6 +32,7 @@ global.sockets = new Array();
 global.commands = new Array();              //Array of command handlers
 global.httpcommands = new Array();          //Array of HTTP handlers
 global.events = require('./events.js');     //Event handlers
+
 
 initializeModules();
 
@@ -144,16 +145,22 @@ function initializeModules () {
         console.log(e);
         console.log('It is likely that you do not have the ttapi node module installed.'
             + '\nUse the command \'npm install ttapi\' to install.');
-        process.exit(0);
+        process.exit(33);
     }
 
     //Creates the config object
     try {
-        config = JSON.parse(fs.readFileSync('config.json', 'ascii'));
+        if (args[2] == '-c' && args[3] != null) {
+            config = JSON.parse(fs.readFileSync(args[3], 'ascii'));
+            console.log('LOADED ', config);
+        } else {
+            config = JSON.parse(fs.readFileSync('config.json', 'ascii'));
+        }
     } catch(e) {
+        //todo: update error handling
         console.log(e);
         console.log('Ensure that config.json is present in this directory.');
-        process.exit(0);
+        process.exit(33);
     }
     
     bot = new Bot(config.botinfo.auth, config.botinfo.userid);
@@ -202,7 +209,7 @@ function initializeModules () {
         console.log(e);
         console.log('It is likely that you do not have the request node module installed.'
             + '\nUse the command \'npm install request\' to install.');
-        process.exit(0);
+        process.exit(33);
     }
     
     try {
@@ -668,6 +675,16 @@ global.handleCommand = function (name, userid, text, source) {
             bot.speak('Shutting down...');
             bot.roomDeregister();
             process.exit(0);
+        }
+    }
+    
+    //Shuts down bot (only the main admin can run this)
+    //Disconnects from room, exits process.
+    if (text.toLowerCase() == (config.botinfo.botname + ', go away')) {
+        if (userid == config.admin) {
+            bot.speak('Shutting down...');
+            bot.roomDeregister();
+            process.exit(33);
         }
     }
     

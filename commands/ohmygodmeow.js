@@ -1,6 +1,6 @@
 //Bot freakout
 
-exports.name = '/roll';
+exports.name = 'oh my god meow';
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;
