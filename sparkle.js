@@ -152,7 +152,6 @@ function initializeModules () {
     try {
         if (args[2] == '-c' && args[3] != null) {
             config = JSON.parse(fs.readFileSync(args[3], 'ascii'));
-            console.log('LOADED ', config);
         } else {
             config = JSON.parse(fs.readFileSync('config.json', 'ascii'));
         }
