@@ -688,6 +688,14 @@ global.handleCommand = function (name, userid, text, source) {
         }
     }
     
+    if (text.toLowerCase() == (config.botinfo.botname + ', come back later')) {
+        if (userid == config.admin) {
+            bot.speak('I\'ll be back in ten minutes!');
+            bot.roomDeregister();
+            process.exit(34);
+        }
+    }
+    
     //Have the bot step up to DJ
     if (text.toLowerCase() == (config.botinfo.botname + ', step up')) {
         if (admincheck(userid)) {
