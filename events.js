@@ -150,7 +150,7 @@ exports.registeredEventHandler = function (data) {
 	}
     
     if (config.responses.welcomepm) {
-        if (config.database.usedb) {
+        if (config.database.usedb && !config.responses.alwayspm) {
             client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
                 + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
                 function cb(error, results, fields) {
@@ -159,22 +159,16 @@ exports.registeredEventHandler = function (data) {
                         var curtime = results[0]['now'];
                         //Send a welcome PM if user hasn't joined in 36+ hours
                         if ((new Date().getTime() - time.getTime()) > 129600000) {
-                            output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
-                            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
-                            + '\'commands\' to see a list of commands I can respond to.',
-                            destination: 'pm', userid: user.userid});
+                            output({text: config.responses.pmgreet,
+                                destination: 'pm', userid: user.userid});
                         }
                     } else {
-                        output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
-                            + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
-                            + '\'commands\' to see a list of commands I can respond to.',
+                        output({text: config.responses.pmgreet,
                             destination: 'pm', userid: user.userid});
                     }
             });
         } else {
-            output({text: 'Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, '
-                + 'play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type '
-                + '\'commands\' to see a list of commands I can respond to.',
+            output({text: config.responses.pmgreet,
                 destination: 'pm', userid: user.userid});
         }
     }
@@ -286,12 +280,6 @@ exports.endSongEventHandler = function (data) {
 exports.newSongEventHandler = function (data) {
 	//Populate new song data in currentsong
 	populateSongData(data);
-
-	//Skrillex is awful
-	if ((currentsong.artist.indexOf('Skrillex') != -1) || (currentsong.song.indexOf('Skrillex') != -1)) {
-		bot.remDj(currentsong.djid);
-		bot.speak('NO.');
-	}
 
 	//Enforce stepdown rules
 	if (usertostep != null) {

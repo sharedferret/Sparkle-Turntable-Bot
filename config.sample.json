@@ -20,7 +20,7 @@
 	{"useapi":true,
 	"lastfmkey":"#####"},
 "tcp":
-	 {"usetcp": true, 
+	 {"usetcp": false, 
 	"port": 8180, 
 	"host": "localhost"},
 "http":
@@ -33,6 +33,8 @@
 	"reportsongstats":true,
 	"welcomeusers":true,
     "welcomepm":true,
+    "alwayspm":false,
+    "pmgreet": "Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type 'commands' to see a list of commands I can respond to.",
 	"greeting":"Welcome, ",
 	"ownerresponse":"sharedferret made me!",
 	"sing":true, 
