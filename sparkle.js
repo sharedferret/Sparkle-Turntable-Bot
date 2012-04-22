@@ -342,16 +342,10 @@ global.output = function (data) {
 //Checks if the user id is present in the admin list. Authentication
 //for admin-only privileges.
 global.admincheck = function (userid) {
-	for (i in moderators) {
-        if (userid == moderators[i]) {
-            return true;
-        }
-    }
-    
-    if (userid == config.admin) {
-        return true;
-    }
-	return false;
+    return (userid === config.admin ||
+        moderators.some(function(moderatorid) {
+            return moderatorid === userid;
+        }));
 }
 
 //TODO: Implement
