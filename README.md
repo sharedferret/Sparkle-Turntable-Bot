@@ -4,6 +4,7 @@ A customizable Turntable.fm bot.
 
 This bot is still relatively early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms. Please report any bugs you find.
 
+**IMPORTANT**: Did your bot break on April 24th? Make sure you update ttapi (by running `npm update` in your bot directory) and updating to 1.0b3 or higher of Sparkle Turntable Bot.
 
 ## Installation
 
