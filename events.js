@@ -4,7 +4,6 @@ exports.readyEventHandler = function (data) {
 		setUpDatabase();
 	}
     
-	bot.roomRegister(config.roomid);
 }
 
 //Runs when the room is changed.

@@ -162,7 +162,7 @@ function initializeModules () {
         process.exit(33);
     }
     
-    bot = new Bot(config.botinfo.auth, config.botinfo.userid);
+    bot = new Bot(config.botinfo.auth, config.botinfo.userid, config.roomid);
 
     //Loads bot singalongs
     if (config.responses.sing) {
