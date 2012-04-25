@@ -1,6 +1,6 @@
 #Sparkle Turntable Bot
 
-A customizable Turntable.fm bot.
+A customizable Turntable.fm bot written in node.js utilizing [ttapi](https://github.com/alaingilbert/Turntable-API).
 
 This bot is still relatively early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms. Please report any bugs you find.
 
