@@ -132,8 +132,13 @@ bot.on('tcpEnd', events.tcpEndEventHandler);
 //TCP message handling
 bot.on('tcpMessage', events.tcpMessageEventHandler);
 
-
 bot.on('httpRequest', events.httpRequestEventHandler);
+
+process.on('message', function(data) {
+    if (data.deliverCommand != null) {
+        bot.speak(data.deliverCommand);
+    }
+});
 
 // Functions
 
@@ -158,7 +163,7 @@ function initializeModules () {
     } catch(e) {
         //todo: update error handling
         console.log(e);
-        console.log('Ensure that config.json is present in this directory.');
+        console.log('Error loading config.json. Check that your config file exists and is valid JSON.');
         process.exit(33);
     }
     
@@ -215,7 +220,10 @@ function initializeModules () {
         xml2js = require('xml2js');
         parser = new xml2js.Parser();
     } catch(e) {
-        //
+        console.log(e);
+        console.log('It is likely that you do not have the xml2js node module installed.'
+            + '\nUse the command \'npm install xml2js\' to install.');
+        process.exit(33);
     }
     
     //Create TCP listeners
