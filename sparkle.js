@@ -64,7 +64,8 @@ global.currentsong = {
 	up: 0,
 	down: 0,
 	listeners: 0,
-	snags: 0};
+	snags: 0,
+    id: null };
     
 
 //When the bot is ready, this makes it join the primary room (ROOMID)
@@ -328,6 +329,7 @@ global.populateSongData = function(data) {
 	currentsong.listeners = data.room.metadata.listeners;
 	currentsong.started = data.room.metadata.current_song.starttime;
 	currentsong.snags = 0;
+    currentsong.id = data.room.metadata.current_song._id;
 }
 
 //Format: output({text: [required], destination: [required],
