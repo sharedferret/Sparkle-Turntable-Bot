@@ -408,7 +408,10 @@ global.addToDb = function (data) {
 global.welcomeUser = function (name, id) {
     //Ignore ttdashboard bots
     if (!name.match(/^ttdashboard/)) {
-        if (config.database.usedb) {
+        if (id == '4f5628b9a3f7515810008122') {
+            bot.speak(':cat: <3 :wolf:');
+        }
+        else if (config.database.usedb) {
             client.query('SELECT greeting FROM ' + config.database.dbname + '.'
                 + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
                 function cbfunc(error, results, fields) {
@@ -572,7 +575,7 @@ global.checkStepup = function (userid, name) {
 global.checkWaitlist = function (userid, name) {
     if (waitlist.length > 0) {
         //If they're not first, remove/warn
-        if (waitlist[0].name == name) {
+        if (waitlist[0].id == userid) {
             waitlist.shift();
             return true;
         }

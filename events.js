@@ -363,6 +363,16 @@ exports.remDjEventHandler = function (data) {
         bot.speak('The next spot is for @' + waitlist[0].name + '!');
         output({text: 'Hey! This spot is yours, so go ahead and step up!', destination: 'pm',
             userid: waitlist[0].id});
+            
+        /**
+        var waitingfor = waitlist[0];
+        setTimeout(function() {
+            //See if user has stepped up, if not, call "next" function
+            if (waitlist[0] == waitingfor) {
+                waitlist.shift();
+                announceNextPersonOnWaitlist();
+            }
+        }, 30000);*/
     }
     legalstepdown = true;
 }
