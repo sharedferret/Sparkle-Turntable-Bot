@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0b3';
+global.version = '[Sparkle] Version 1.0b4';
 
 global.fs = require('fs');
 global.url = require('url'); 
@@ -522,6 +522,9 @@ global.addToWaitlist = function (userid, name, source) {
     waitlist.push({name: name, id: userid});
     output({text: 'You\'ve been added to the queue. Your position is ' + waitlist.length + '.',
         destination: source, userid: userid});
+    if (waitlist.length == 1) {
+        announceNextPersonOnWaitlist();
+    }
     return true;
 }
 
@@ -577,6 +580,9 @@ global.checkWaitlist = function (userid, name) {
         //If they're not first, remove/warn
         if (waitlist[0].id == userid) {
             waitlist.shift();
+            if (djs.length < 5) {
+                announceNextPersonOnWaitlist();
+            }
             return true;
         }
         bot.remDj(userid);
@@ -586,6 +592,24 @@ global.checkWaitlist = function (userid, name) {
         return false;
     }
     return true;
+}
+
+global.announceNextPersonOnWaitlist = function () {
+    if (waitlist.length > 0) {
+        bot.speak('The next spot is for @' + waitlist[0].name + '! You\'ve got 30 seconds to step up!');
+        output({text: 'Hey! This spot is yours, so go ahead and step up!', destination: 'pm',
+            userid: waitlist[0].id});
+            
+        
+        var waitingfor = waitlist[0];
+        setTimeout(function() {
+            //See if user has stepped up, if not, call "next" function
+            if (waitlist[0] == waitingfor) {
+                waitlist.shift();
+                announceNextPersonOnWaitlist();
+            }
+        }, 30000);
+    }
 }
 
 //Calculates the target number of bonus votes needed for bot to awesome
