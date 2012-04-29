@@ -522,7 +522,7 @@ global.addToWaitlist = function (userid, name, source) {
     waitlist.push({name: name, id: userid});
     output({text: 'You\'ve been added to the queue. Your position is ' + waitlist.length + '.',
         destination: source, userid: userid});
-    if (waitlist.length == 1) {
+    if (waitlist.length == 1 && djs.length < 5) {
         announceNextPersonOnWaitlist();
     }
     return true;
@@ -595,16 +595,16 @@ global.checkWaitlist = function (userid, name) {
 }
 
 global.announceNextPersonOnWaitlist = function () {
-    if (waitlist.length > 0) {
+    if (waitlist.length > 0 && djs.length < 5) {
         bot.speak('The next spot is for @' + waitlist[0].name + '! You\'ve got 30 seconds to step up!');
         output({text: 'Hey! This spot is yours, so go ahead and step up!', destination: 'pm',
             userid: waitlist[0].id});
             
         
-        var waitingfor = waitlist[0];
+        var waitingfor = waitlist[0].id;
         setTimeout(function() {
             //See if user has stepped up, if not, call "next" function
-            if (waitlist[0] == waitingfor) {
+            if (waitlist[0].id == waitingfor) {
                 waitlist.shift();
                 announceNextPersonOnWaitlist();
             }
