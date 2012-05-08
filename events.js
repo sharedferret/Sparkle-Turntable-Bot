@@ -410,14 +410,17 @@ exports.snagEventHandler = function(data) {
 
 exports.bootedUserEventHandler = function(data) {
 	//if the bot was booted, reboot
-	if((config.botinfo.userid == data.userid) && config.maintenance.autorejoin) {
-		setTimeout(function() {
-			bot.roomRegister(config.roomid);
-		}, 25000);
-		setTimeout(function() {
-			bot.speak('Please do not boot the room bot.');
-		}, 27000);
-	}
+	if(config.botinfo.userid == data.userid) {
+        console.log(config.botinfo.botname + ' was booted.', data);
+        if (config.maintenance.autorejoin) {
+            setTimeout(function() {
+                bot.roomRegister(config.roomid);
+            }, 25000);
+            setTimeout(function() {
+                bot.speak('Please do not boot the room bot.');
+            }, 27000);
+        }
+    }
 }
 
 exports.pmEventHandler = function(data) {
