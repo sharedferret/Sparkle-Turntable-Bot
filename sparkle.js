@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0b4';
+global.version = '[Sparkle] Version 1.0.0';
 
 global.fs = require('fs');
 global.url = require('url'); 
@@ -604,7 +604,7 @@ global.announceNextPersonOnWaitlist = function () {
         var waitingfor = waitlist[0].id;
         setTimeout(function() {
             //See if user has stepped up, if not, call "next" function
-            if (waitlist[0].id == waitingfor) {
+            if (waitlist.length > 0 && waitlist[0].id == waitingfor) {
                 waitlist.shift();
                 announceNextPersonOnWaitlist();
             }
