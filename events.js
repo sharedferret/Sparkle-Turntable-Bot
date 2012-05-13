@@ -315,6 +315,14 @@ exports.newSongEventHandler = function (data) {
         }, randomwait * 1000);
     }
     
+    //Decrement partialdjs list
+    for (i in partialdjs) {
+        partialdjs[i].rem--;
+        if (partialdjs[i].rem <= 0) {
+            partialdjs.splice(i, 1);
+        }
+    }
+    
     //If the botSing is enabled, see if there are any lyrics for this song
     if (config.responses.sing) {
         //Try to find lyrics from singalong.js
@@ -359,6 +367,22 @@ exports.remDjEventHandler = function (data) {
 	//Remove from dj list
 	for (i in djs) {
 		if (djs[i].id == data.user[0].userid) {
+            //If they haven't played all their songs, keep track
+            //of that for a while
+            if (config.enforcement.enforceroom
+                && config.enforcement.stepuprules.waittostepup
+                && (djs[i].remaining == 0 ||
+                djs[i].remaining == config.enforcement.songstoplay))
+            {
+                var rem = config.enforcement.songstoplay;
+                if (config.enforcement.stepuprules.waittype == 'SONGS') {
+                    rem += config.enforcement.stepuprules.length;
+                } else {
+                    rem += (config.enforcement.stepuprules.length / 4);
+                }
+                partialdjs.push({id: djs[i].id,
+                    lefttoplay: djs[i].remaining, rem: rem});
+            }
 			djs.splice(i, 1);
 		}
 	}
@@ -385,10 +409,21 @@ exports.addDjEventHandler = function(data) {
     
     //Add to DJ list
     if (config.enforcement.enforceroom) {
-        djs.push({id: data.user[0].userid, remaining: config.enforcement.songstoplay});
+        var toplay = config.enforcement.songstoplay;
+        //If they've been up recently, modify their remaining count
+        for (i in partialdjs) {
+            if (partialdjs[i].id == data.user[0].userid) {
+                toplay = partialdjs[i].lefttoplay;
+                partialdjs.splice(i, 1);
+            }
+        }
+        djs.push({id: data.user[0].userid, remaining: toplay});
+            //If they've been up recently, modify their remaining count
     } else {
         djs.push({id: data.user[0].userid, remaining: 0});
     }
+    
+
     
     if (config.enforcement.waitlist) {
         checkWaitlist(data.user[0].userid, data.user[0].name);

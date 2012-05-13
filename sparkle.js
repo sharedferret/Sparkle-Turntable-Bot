@@ -37,8 +37,10 @@ global.events = require('./events.js');     //Event handlers
 initializeModules();
 
 //Room information
-global.usersList = { };                //A list of users in the room
-global.djs = new Array();                      //A list of current DJs
+global.usersList = { };                     //A list of users in the room
+global.djs = new Array();                   //A list of current DJs
+global.partialdjs = new Array();            //A list of DJs who have stepped down before their
+                                            //allotted # of songs
 
 //Room enforcement variables
 global.usertostep = null;                     //The userid of the DJ to step down
