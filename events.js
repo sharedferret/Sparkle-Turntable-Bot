@@ -183,7 +183,7 @@ exports.registeredEventHandler = function (data) {
     //See if banned
     client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\') FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
         function cb (error, results, fields) {
-            if (results != null) {
+            if (results != null && results.length > 0) {
                 bot.boot(user.userid, 'You were banned from this room by ' + results[0]['banned_by']
                     + ' on ' + results[0]['timestamp']);
             }
@@ -208,6 +208,32 @@ exports.deregisteredEventHandler = function (data) {
                 sockets[i].socket.write(JSON.stringify(response));
             } catch(e) {
                 console.log('TCP Error: ' + e);
+            }
+        }
+    }
+    
+    //If waitlist, hold for 30 secs then remove
+    if (config.enforcement.waitlist) {
+        for (i in waitlist) {
+            if (waitlist[i].id == data.user[0].id) {
+                setTimeout(function() {
+                    if (waitlist.length > 0) {
+                        var found = false;
+                        for (j in usersList) {
+                            if (usersList[j].id == data.user[0].id) {
+                                found = true;
+                            }
+                        }
+                        if (found) {
+                            for (k in waitlist) {
+                                if (waitlist[k] == data.user[0].id) {
+                                    waitlist.splice(k, 1);
+                                }
+                            }
+                        }
+                        
+                    }
+                }, 30000);
             }
         }
     }
@@ -371,8 +397,8 @@ exports.remDjEventHandler = function (data) {
             //of that for a while
             if (config.enforcement.enforceroom
                 && config.enforcement.stepuprules.waittostepup
-                && (djs[i].remaining == 0 ||
-                djs[i].remaining == config.enforcement.songstoplay))
+                && djs[i].remaining > 0 &&
+                djs[i].remaining != config.enforcement.songstoplay)
             {
                 var rem = config.enforcement.songstoplay;
                 if (config.enforcement.stepuprules.waittype == 'SONGS') {
@@ -418,7 +444,6 @@ exports.addDjEventHandler = function(data) {
             }
         }
         djs.push({id: data.user[0].userid, remaining: toplay});
-            //If they've been up recently, modify their remaining count
     } else {
         djs.push({id: data.user[0].userid, remaining: 0});
     }
