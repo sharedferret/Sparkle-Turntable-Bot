@@ -179,6 +179,15 @@ exports.registeredEventHandler = function (data) {
             + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
             [user.userid, user.name]);
     }
+    
+    //See if banned
+    client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\') FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
+        function cb (error, results, fields) {
+            if (results != null) {
+                bot.boot(user.userid, 'You were banned from this room by ' + results[0]['banned_by']
+                    + ' on ' + results[0]['timestamp']);
+            }
+    });
 }
 
 //Runs when a user leaves the room

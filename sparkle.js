@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0.0';
+global.version = '[Sparkle] Version 1.0.1';
 
 global.fs = require('fs');
 global.url = require('url'); 
@@ -317,6 +317,17 @@ global.setUpDatabase = function() {
                 throw (error);
             }
     });
+    
+    client.query('CREATE TABLE BANNED_USERS ('
+        + 'id INT(11) AUTO_INCREMENT PRIMARY KEY, '
+        + 'userid VARCHAR(255), '
+        + 'banned_by VARCHAR(255), '
+        + 'timestamp DATETIME)',
+        function (error) {
+            if (error && error.number != 1050) {
+                throw error;
+            }
+    });
 }
 
 global.populateSongData = function(data) {
@@ -410,6 +421,12 @@ global.welcomeUser = function (name, id) {
     if (!name.match(/^ttdashboard/)) {
         if (id == '4f5628b9a3f7515810008122') {
             bot.speak(':cat: <3 :wolf:');
+        }
+        else if (id == '4df0443f4fe7d0631905d6a8') {
+            bot.speak(':cat: <3 ' + name);
+        }
+        else if (name.match(/^@ttstats/)) {
+            bot.boot(id, 'Nope.');
         }
         else if (config.database.usedb) {
             client.query('SELECT greeting FROM ' + config.database.dbname + '.'
