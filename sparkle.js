@@ -427,9 +427,6 @@ global.welcomeUser = function (name, id) {
         else if (id == '4df0443f4fe7d0631905d6a8') {
             bot.speak(':cat: <3 ' + name);
         }
-        else if (name.match(/^@ttstats/)) {
-            bot.boot(id, 'Nope.');
-        }
         else if (config.database.usedb) {
             client.query('SELECT greeting FROM ' + config.database.dbname + '.'
                 + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',

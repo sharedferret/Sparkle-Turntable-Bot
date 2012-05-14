@@ -178,7 +178,6 @@ exports.registeredEventHandler = function (data) {
         + ' (userid, username, lastseen)'
             + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
             [user.userid, user.name]);
-    }
     
     //See if banned
     client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\') FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
@@ -188,6 +187,7 @@ exports.registeredEventHandler = function (data) {
                     + ' on ' + results[0]['timestamp']);
             }
     });
+    }
 }
 
 //Runs when a user leaves the room
