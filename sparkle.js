@@ -59,14 +59,14 @@ global.bonusvotepoints = 0;            //The number of awesomes needed for the b
 
 //Current song info
 global.currentsong = {
-	artist: null,
-	song: null,
-	djname: null,
-	djid: null,
-	up: 0,
-	down: 0,
-	listeners: 0,
-	snags: 0,
+    artist: null,
+    song: null,
+    djname: null,
+    djid: null,
+    up: 0,
+    down: 0,
+    listeners: 0,
+    snags: 0,
     id: null };
     
 
@@ -286,7 +286,7 @@ global.setUpDatabase = function() {
         + ' started DATETIME,'
         + ' snags INT(3),'
         + ' bonus INT(3))',
-			
+            
         function (error) {
             //Handle an error if it's not a table already exists error
             if(error && error.number != 1050) {
@@ -334,14 +334,14 @@ global.setUpDatabase = function() {
 
 global.populateSongData = function(data) {
     currentsong.artist = data.room.metadata.current_song.metadata.artist;
-	currentsong.song = data.room.metadata.current_song.metadata.song;
-	currentsong.djname = data.room.metadata.current_song.djname;
-	currentsong.djid = data.room.metadata.current_song.djid;
-	currentsong.up = data.room.metadata.upvotes;
-	currentsong.down = data.room.metadata.downvotes;
-	currentsong.listeners = data.room.metadata.listeners;
-	currentsong.started = data.room.metadata.current_song.starttime;
-	currentsong.snags = 0;
+    currentsong.song = data.room.metadata.current_song.metadata.song;
+    currentsong.djname = data.room.metadata.current_song.djname;
+    currentsong.djid = data.room.metadata.current_song.djid;
+    currentsong.up = data.room.metadata.upvotes;
+    currentsong.down = data.room.metadata.downvotes;
+    currentsong.listeners = data.room.metadata.listeners;
+    currentsong.started = data.room.metadata.current_song.starttime;
+    currentsong.snags = 0;
     currentsong.id = data.room.metadata.current_song._id;
 }
 
@@ -379,43 +379,43 @@ global.checkAuth = function (givenKey) {
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
 //the result from a RNG.
 global.reptarCall = function (source) {
-	var rand = Math.random();
+    var rand = Math.random();
     var response = '';
-	if (rand < 0.05) {
-		response = ('That band is pretty awesome.');
-	} else if (rand < 0.10) {
-		response = ('Good morning!');
-	} else if (rand < 0.17) {
-		response = ('Rawr!');
-	} else if (rand < 0.3) {
-		response = ('rawr!');
-	} else if (rand < 0.4) {
-		response = ('RAWR!');
-	} else if (rand < 0.5) {
-		response = ('rawr.');
-	} else if (rand < 0.6) {
-		response = ('RAWR!!!');
-	} else {
-		response = ('.reptar');
-	}
+    if (rand < 0.05) {
+        response = ('That band is pretty awesome.');
+    } else if (rand < 0.10) {
+        response = ('Good morning!');
+    } else if (rand < 0.17) {
+        response = ('Rawr!');
+    } else if (rand < 0.3) {
+        response = ('rawr!');
+    } else if (rand < 0.4) {
+        response = ('RAWR!');
+    } else if (rand < 0.5) {
+        response = ('rawr.');
+    } else if (rand < 0.6) {
+        response = ('RAWR!!!');
+    } else {
+        response = ('.reptar');
+    }
     return response;
 }
 
 //Adds the song data to the songdata table.
 //This runs on the endsong event.
 global.addToDb = function (data) {
-	client.query(
-		'INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.song +' '
-		+ 'SET artist = ?,song = ?, djid = ?, up = ?, down = ?,'
-		+ 'listeners = ?, started = NOW(), snags = ?, bonus = ?',
-		[currentsong.artist, 
-		currentsong.song,  
-		currentsong.djid, 
-		currentsong.up, 
-		currentsong.down, 
-		currentsong.listeners,
-		currentsong.snags,
-		bonuspoints.length]);
+    client.query(
+        'INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.song +' '
+        + 'SET artist = ?,song = ?, djid = ?, up = ?, down = ?,'
+        + 'listeners = ?, started = NOW(), snags = ?, bonus = ?',
+        [currentsong.artist, 
+        currentsong.song,  
+        currentsong.djid, 
+        currentsong.up, 
+        currentsong.down, 
+        currentsong.listeners,
+        currentsong.snags,
+        bonuspoints.length]);
 }
 
 global.welcomeUser = function (name, id) {
@@ -446,16 +446,16 @@ global.welcomeUser = function (name, id) {
 //Reminds a user that has just played a song to step down, and pulls them
 //off stage if they do not step down.
 global.enforceRoom = function () {
-	setTimeout( function() {
-		if(!userstepped) {
-			bot.speak('@' + usersList[usertostep].name + ', please step down');
-			setTimeout( function() {
-				if(!userstepped) {
-					bot.remDj(usertostep);
-				}
-			}, 15000);
-		}
-	}, 15000);
+    setTimeout( function() {
+        if(!userstepped) {
+            bot.speak('@' + usersList[usertostep].name + ', please step down');
+            setTimeout( function() {
+                if(!userstepped) {
+                    bot.remDj(usertostep);
+                }
+            }, 15000);
+        }
+    }, 15000);
 }
 
 global.reducePastDJCounts = function (djid) {
@@ -630,21 +630,21 @@ global.announceNextPersonOnWaitlist = function () {
 
 //Calculates the target number of bonus votes needed for bot to awesome
 global.getTarget = function() {
-	if (currentsong.listeners < 11) {
-		return 3;
-	} else if (currentsong.listeners < 21) {
-		return 4;
-	}
-	return 5 + Math.floor((currentsong.listeners - 20) / 20);
+    if (currentsong.listeners < 11) {
+        return 3;
+    } else if (currentsong.listeners < 21) {
+        return 4;
+    }
+    return 5 + Math.floor((currentsong.listeners - 20) / 20);
 }
 
 //Calculates the target number of awesomes needed for the bot to awesome
 global.getVoteTarget = function() {
-	if (currentsong.listeners <= 3) {
-		return 2;
-	}
+    if (currentsong.listeners <= 3) {
+        return 2;
+    }
     //Trendline on the average number of awesomes in the 1+Done room
-	return Math.ceil(Math.pow(1.1383*(currentsong.listeners - 3), 0.6176));
+    return Math.ceil(Math.pow(1.1383*(currentsong.listeners - 3), 0.6176));
 }
 
 //Checks if the user can step up
@@ -779,6 +779,6 @@ global.handleCommand = function (name, userid, text, source) {
         } else if (source == 'pm') {
             bot.pm('But... you PM\'d me that. Do you think I\'m stupid? >:T', userid);
         }
-    }	
+    }    
 }
 

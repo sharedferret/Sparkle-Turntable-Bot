@@ -1,8 +1,8 @@
 exports.readyEventHandler = function (data) {
 
     if (config.database.usedb) {
-		setUpDatabase();
-	}
+        setUpDatabase();
+    }
     
 }
 
@@ -12,7 +12,7 @@ exports.roomChangedEventHandler = function(data) {
 
     moderators = data.room.metadata.moderator_id;
 
-	//Fill currentsong array with room data
+    //Fill currentsong array with room data
     if ((data.room != null) && (data.room.metadata != null)) {
         if (data.room.metadata.current_song != null) {
             populateSongData(data);
@@ -27,23 +27,23 @@ exports.roomChangedEventHandler = function(data) {
             }
         }
     }
-	
+    
     //If the bonus flag is set to VOTE, find the number of awesomes needed for
     //the current song
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	}
+    if (config.bonusvote == 'VOTE') {
+        bonusvotepoints = getVoteTarget();
+    }
     
     
-	//Set bot's laptop type
-	bot.modifyLaptop(config.botinfo.laptop);
-	
-	//Repopulates usersList array.
-	var users = data.users;
-	for (i in users) {
-		var user = users[i];
-		usersList[user.userid] = user;
-	}
+    //Set bot's laptop type
+    bot.modifyLaptop(config.botinfo.laptop);
+    
+    //Repopulates usersList array.
+    var users = data.users;
+    for (i in users) {
+        var user = users[i];
+        usersList[user.userid] = user;
+    }
     
     //Adds all active users to the users table - updates lastseen if we've seen
     //them before, adds a new entry if they're new or have changed their username
@@ -57,16 +57,16 @@ exports.roomChangedEventHandler = function(data) {
                 [users[i].userid, users[i].name]);
         }
     }
-	
+    
 }
 
 //Runs when a user updates their vote
 //Updates current song data and logs vote in console
 exports.updateVoteEventHandler = function (data) {
-	//Update vote and listener count
-	currentsong.up = data.room.metadata.upvotes;
-	currentsong.down = data.room.metadata.downvotes;
-	currentsong.listeners = data.room.metadata.listeners;
+    //Update vote and listener count
+    currentsong.up = data.room.metadata.upvotes;
+    currentsong.down = data.room.metadata.downvotes;
+    currentsong.listeners = data.room.metadata.listeners;
     
     for (i in sockets) {
         if (sockets[i].votes == true) {
@@ -78,49 +78,49 @@ exports.updateVoteEventHandler = function (data) {
             }
         }
     }
-	
+    
     //If the vote exceeds the bonus threshold and the bot's bonus mode
     //is set to VOTE, give a bonus point
-	if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
-		if (currentsong.up >= bonusvotepoints) {
-			bot.vote('up');
-			bot.speak('Bonus!');
-			bonuspoints.push('xxMEOWxx');
-			bonusvote = true;
-		}
-	}
+    if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
+        if (currentsong.up >= bonusvotepoints) {
+            bot.vote('up');
+            bot.speak('Bonus!');
+            bonuspoints.push('xxMEOWxx');
+            bonusvote = true;
+        }
+    }
 
-	//Log vote in console
-	//Note: Username only displayed for upvotes, since TT doesn't broadcast
-	//      username for downvote events.
-	if (config.consolelog) {
-		if (data.room.metadata.votelog[0][1] == 'up') {
-			var voteduser = usersList[data.room.metadata.votelog[0][0]];
-				console.log('Vote: [+'
-				+ data.room.metadata.upvotes + ' -'
-				+ data.room.metadata.downvotes + '] ['
-				+ data.room.metadata.votelog[0][0] + '] '
-				+ voteduser.name + ': '
-				+ data.room.metadata.votelog[0][1]);
-		} else {
-			console.log('Vote: [+'
-				+ data.room.metadata.upvotes + ' -'
-				+ data.room.metadata.downvotes + ']');
-		}
-	}
+    //Log vote in console
+    //Note: Username only displayed for upvotes, since TT doesn't broadcast
+    //      username for downvote events.
+    if (config.consolelog) {
+        if (data.room.metadata.votelog[0][1] == 'up') {
+            var voteduser = usersList[data.room.metadata.votelog[0][0]];
+                console.log('Vote: [+'
+                + data.room.metadata.upvotes + ' -'
+                + data.room.metadata.downvotes + '] ['
+                + data.room.metadata.votelog[0][0] + '] '
+                + voteduser.name + ': '
+                + data.room.metadata.votelog[0][1]);
+        } else {
+            console.log('Vote: [+'
+                + data.room.metadata.upvotes + ' -'
+                + data.room.metadata.downvotes + ']');
+        }
+    }
 }
 
 //Runs when a user joins
 //Adds user to userlist, logs in console, and greets user in chat.
 exports.registeredEventHandler = function (data) {
-	//Log event in console
-	if (config.consolelog) {
-		console.log('Joined room: ' + data.user[0].name);
-	}
-	
-	//Add user to usersList
-	var user = data.user[0];
-	usersList[user.userid] = user;
+    //Log event in console
+    if (config.consolelog) {
+        console.log('Joined room: ' + data.user[0].name);
+    }
+    
+    //Add user to usersList
+    var user = data.user[0];
+    usersList[user.userid] = user;
     if (currentsong != null) {
         currentsong.listeners++;
     }
@@ -136,17 +136,17 @@ exports.registeredEventHandler = function (data) {
             }
         }
     }
-	
+    
     //If the bonus flag is set to VOTE, find the number of awesomes needed
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	}
+    if (config.bonusvote == 'VOTE') {
+        bonusvotepoints = getVoteTarget();
+    }
 
-	//Greet user
-	//Displays custom greetings for certain members
-	if(config.responses.welcomeusers) {
+    //Greet user
+    //Displays custom greetings for certain members
+    if(config.responses.welcomeusers) {
         welcomeUser(user.name, user.userid);
-	}
+    }
     
     if (config.responses.welcomepm) {
         if (config.database.usedb && !config.responses.alwayspm) {
@@ -193,10 +193,10 @@ exports.registeredEventHandler = function (data) {
 //Runs when a user leaves the room
 //Removes user from usersList, logs in console
 exports.deregisteredEventHandler = function (data) {
-	//Log in console
-	if (config.consolelog) {
-		console.log('Left room: ' + data.user[0].name);
-	}
+    //Log in console
+    if (config.consolelog) {
+        console.log('Left room: ' + data.user[0].name);
+    }
     
     currentsong.listeners--;
     
@@ -237,29 +237,29 @@ exports.deregisteredEventHandler = function (data) {
             }
         }
     }
-	
-	//Remove user from userlist
+    
+    //Remove user from userlist
     //TODO: Replace this with a .splice fn
-	delete usersList[data.user[0].userid];
+    delete usersList[data.user[0].userid];
 }
 
 //Runs when something is said in chat
 //Responds based on coded commands, logs in console, adds chat entry to chatlog table
 //Commands are added under switch(text)
 exports.speakEventHandler = function (data) {
-	//Log in console
-	if (config.consolelog) {
-		console.log('Chat [' + data.userid + ' ' + data.name +'] ' + data.text);
-	}
+    //Log in console
+    if (config.consolelog) {
+        console.log('Chat [' + data.userid + ' ' + data.name +'] ' + data.text);
+    }
 
-	//Log in db (chatlog table)
-	if (config.database.usedb && config.database.logchat) {
-		client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
-			+ 'SET userid = ?, chat = ?, time = NOW()',
-			[data.userid, data.text]);
-	}
+    //Log in db (chatlog table)
+    if (config.database.usedb && config.database.logchat) {
+        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
+            + 'SET userid = ?, chat = ?, time = NOW()',
+            [data.userid, data.text]);
+    }
 
-	//If it's a supported command, handle it	
+    //If it's a supported command, handle it    
     
     if (config.responses.respond) {
         handleCommand(data.name, data.userid, data.text.toLowerCase(), 'speak');
@@ -273,10 +273,10 @@ exports.noSongEventHandler = function(data) {
 //Runs at the end of a song
 //Logs song in database, reports song stats in chat
 exports.endSongEventHandler = function (data) {
-	//Log song in DB
-	if (config.database.usedb) {
-		addToDb();
-	}
+    //Log song in DB
+    if (config.database.usedb) {
+        addToDb();
+    }
 
     //If a DJ that needed to step down hasn't by the end of the
     //next DJ's song, remove them immediately
@@ -284,7 +284,7 @@ exports.endSongEventHandler = function (data) {
         bot.remDj(usertostep);
     }
     
-	//Used for room enforcement
+    //Used for room enforcement
     //Reduces the number of songs remaining for the current DJ by one
     if (config.enforcement.enforceroom) {
         reducePastDJCounts(currentsong.djid);
@@ -298,12 +298,12 @@ exports.endSongEventHandler = function (data) {
     }
     
 
-	//Report song stats in chat
-	if (config.responses.reportsongstats) {
-		bot.speak(currentsong.song + ' stats: awesomes: '
-			+ currentsong.up + ' lames: ' + currentsong.down
-			+ ' snags: ' + currentsong.snags);
-	}
+    //Report song stats in chat
+    if (config.responses.reportsongstats) {
+        bot.speak(currentsong.song + ' stats: awesomes: '
+            + currentsong.up + ' lames: ' + currentsong.down
+            + ' snags: ' + currentsong.snags);
+    }
     
     
 }
@@ -312,29 +312,29 @@ exports.endSongEventHandler = function (data) {
 //Populates currentsong data, tells bot to step down if it just played a song,
 //logs new song in console, auto-awesomes song
 exports.newSongEventHandler = function (data) {
-	//Populate new song data in currentsong
-	populateSongData(data);
+    //Populate new song data in currentsong
+    populateSongData(data);
 
-	//Enforce stepdown rules
-	if (usertostep != null) {
-		if (usertostep == config.botinfo.userid) {
-			bot.remDj(config.botinfo.userid);
+    //Enforce stepdown rules
+    if (usertostep != null) {
+        if (usertostep == config.botinfo.userid) {
+            bot.remDj(config.botinfo.userid);
         } else if (config.enforcement.enforceroom) {
-			enforceRoom();
-		}
-	}
+            enforceRoom();
+        }
+    }
 
-	//Log in console
-	if (config.consolelog) {
-		console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
-	}
-	
-	//Reset bonus points
-	bonusvote = false;
-	bonuspoints = new Array();
-	if (config.bonusvote == 'VOTE') {
-		bonusvotepoints = getVoteTarget();
-	} else if (config.bonusvote == 'AUTO' && (currentsong.djid != config.botinfo.userid)) {
+    //Log in console
+    if (config.consolelog) {
+        console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
+    }
+    
+    //Reset bonus points
+    bonusvote = false;
+    bonuspoints = new Array();
+    if (config.bonusvote == 'VOTE') {
+        bonusvotepoints = getVoteTarget();
+    } else if (config.bonusvote == 'AUTO' && (currentsong.djid != config.botinfo.userid)) {
         var randomwait = Math.floor(Math.random() * 20) + 4;
         setTimeout(function() {
             bot.vote('up');
@@ -367,15 +367,15 @@ exports.newSongEventHandler = function (data) {
 //Runs when a dj steps down
 //Logs in console
 exports.remDjEventHandler = function (data) {
-	//Log in console
-	//console.log(data.user[0]);
-	if (config.consolelog) {
-		console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
-	}
+    //Log in console
+    //console.log(data.user[0]);
+    if (config.consolelog) {
+        console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
+    }
 
-	//Adds user to 'step down' vars
-	//Used by enforceRoom()
-	if (usertostep == data.user[0].userid) {
+    //Adds user to 'step down' vars
+    //Used by enforceRoom()
+    if (usertostep == data.user[0].userid) {
         //Reset stepdown vars
         userstepped = true;
         usertostep = null;
@@ -383,16 +383,16 @@ exports.remDjEventHandler = function (data) {
         if (config.enforcement.enforceroom && config.enforcement.stepuprules.waittostepup) {
             addToPastDJList(data.user[0].userid);
         }
-	}
+    }
     
     //Set time this event occurred for enforcing one and down room policy
     if (legalstepdown) {
         enforcementtimeout = new Date();
     }
 
-	//Remove from dj list
-	for (i in djs) {
-		if (djs[i].id == data.user[0].userid) {
+    //Remove from dj list
+    for (i in djs) {
+        if (djs[i].id == data.user[0].userid) {
             //If they haven't played all their songs, keep track
             //of that for a while
             if (config.enforcement.enforceroom
@@ -409,9 +409,9 @@ exports.remDjEventHandler = function (data) {
                 partialdjs.push({id: djs[i].id,
                     lefttoplay: djs[i].remaining, rem: rem});
             }
-			djs.splice(i, 1);
-		}
-	}
+            djs.splice(i, 1);
+        }
+    }
     
     //If more than one DJ spot is open, set free-for-all mode to true
     if (config.enforcement.enforceroom && config.enforcement.ffarules.multiplespotffa) {
@@ -428,10 +428,10 @@ exports.remDjEventHandler = function (data) {
 //Logs in console
 exports.addDjEventHandler = function(data) {
     
-	//Log in console
-	if (config.consolelog) {
-		console.log('Stepped up: ' + data.user[0].name);
-	}
+    //Log in console
+    if (config.consolelog) {
+        console.log('Stepped up: ' + data.user[0].name);
+    }
     
     //Add to DJ list
     if (config.enforcement.enforceroom) {
@@ -461,25 +461,25 @@ exports.addDjEventHandler = function(data) {
 
 exports.snagEventHandler = function(data) {
     //Increase song snag count
-	currentsong.snags++;
-	
+    currentsong.snags++;
+    
     //If bonus is chat-based, increase bonus points count
-	if (config.bonusvote == 'CHAT') {
-		bonuspoints.push(usersList[data.userid].name);
-	}
-	
-	var target = getTarget();
-	if((bonuspoints.length >= target) && !bonusvote && (config.bonusvote == 'CHAT') && (currentsong.djid != config.botinfo.userid)) {
-		bot.speak('Bonus!');
-		bot.vote('up');
-		bot.snag();
-		bonusvote = true;
-	}	
+    if (config.bonusvote == 'CHAT') {
+        bonuspoints.push(usersList[data.userid].name);
+    }
+    
+    var target = getTarget();
+    if((bonuspoints.length >= target) && !bonusvote && (config.bonusvote == 'CHAT') && (currentsong.djid != config.botinfo.userid)) {
+        bot.speak('Bonus!');
+        bot.vote('up');
+        bot.snag();
+        bonusvote = true;
+    }    
 }
 
 exports.bootedUserEventHandler = function(data) {
-	//if the bot was booted, reboot
-	if(config.botinfo.userid == data.userid) {
+    //if the bot was booted, reboot
+    if(config.botinfo.userid == data.userid) {
         console.log(config.botinfo.botname + ' was booted.', data);
         if (config.maintenance.autorejoin) {
             setTimeout(function() {
@@ -538,15 +538,15 @@ exports.removeModeratorEventHandler = function(data) {
     }
     
     //If the bot admin was demodded, remod them
-	if(config.admin == data.userid) {
-		setTimeout(function() {
-			bot.addModerator(config.admin);
-		}, 200);
-	}
+    if(config.admin == data.userid) {
+        setTimeout(function() {
+            bot.addModerator(config.admin);
+        }, 200);
+    }
 }
 
 exports.tcpConnectEventHandler = function(socket) {
-	socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
+    socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
     sockets.push({socket: socket, online: false, votes: false});
 }
 
