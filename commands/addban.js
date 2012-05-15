@@ -1,5 +1,5 @@
 exports.name = 'banuser';
-exports.hidden = false;
+exports.hidden = true;
 exports.enabled = true;
 exports.matchStart = true;
 exports.handler = function(data) {
