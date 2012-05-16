@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0.1';
+global.version = '[Sparkle] Version 1.0.2';
 
 global.fs = require('fs');
 global.url = require('url'); 

@@ -254,9 +254,13 @@ exports.speakEventHandler = function (data) {
 
     //Log in db (chatlog table)
     if (config.database.usedb && config.database.logchat) {
+        var inputtext = data.text;
+        if (inputtext.length > 255) {
+            inputtext = inputtext.substring(0, 255);
+        }
         client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
             + 'SET userid = ?, chat = ?, time = NOW()',
-            [data.userid, data.text]);
+            [data.userid, inputtext]);
     }
 
     //If it's a supported command, handle it    
@@ -507,14 +511,14 @@ exports.pmEventHandler = function(data) {
                     } else {
                         bot.getProfile(data.senderid, function(d) {
                             handleCommand(d.name, data.senderid, data.text.toLowerCase(), 'pm');
-                        }
+                        });
                     }
             });
         //Case 3: We can still get their name from TT
         } else {
             bot.getProfile(data.senderid, function(d) {
                 handleCommand(d.name, data.senderid, data.text.toLowerCase(), 'pm');
-            }
+            });
         }
     } catch (e) {
         bot.pm(data.senderid, 'Oh dear, something\'s gone wrong.');
