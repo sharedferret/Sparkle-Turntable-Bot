@@ -5,7 +5,7 @@
 exports.name = '/roll';
 exports.hidden = false;
 exports.enabled = true;
-exports.matchStart = false;
+exports.matchStart = true;
 exports.handler = function(data) {
     var roll = Math.ceil(Math.random() * 6);
     if (config.bonusvote == 'DICE' && !bonusvote && (currentsong.djid == data.userid)) {

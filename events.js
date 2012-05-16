@@ -404,7 +404,7 @@ exports.remDjEventHandler = function (data) {
                 && djs[i].remaining > 0 &&
                 djs[i].remaining != config.enforcement.songstoplay)
             {
-                var rem = config.enforcement.songstoplay;
+                var rem = djs[i].remaining;
                 if (config.enforcement.stepuprules.waittype == 'SONGS') {
                     rem += config.enforcement.stepuprules.length;
                 } else {
