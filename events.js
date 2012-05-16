@@ -494,8 +494,10 @@ exports.bootedUserEventHandler = function(data) {
 
 exports.pmEventHandler = function(data) {
     try {
+        //Case 1: In room. We have their name.
         if (usersList[data.senderid] != null) {
             handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
+        //Case 2: In DB. We have their name.
         } else if (config.database.usedb) {
             client.query('SELECT username FROM `USERS` WHERE userid LIKE \'' + data.senderid
                 + '\' ORDER BY lastseen DESC LIMIT 1',
@@ -503,12 +505,16 @@ exports.pmEventHandler = function(data) {
                     if (results[0] != null) {
                         handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
                     } else {
-                        handleCommand('PM user', data.senderid, data.text.toLowerCase(), 'pm');
+                        bot.getProfile(data.senderid, function(d) {
+                            handleCommand(d.name, data.senderid, data.text.toLowerCase(), 'pm');
+                        }
                     }
             });
+        //Case 3: We can still get their name from TT
         } else {
-            output({text: 'Please drop by our room first! http://http://turntable.fm/indieclassic_alternative_1_done',
-                destination: 'pm', userid: data.senderid});
+            bot.getProfile(data.senderid, function(d) {
+                handleCommand(d.name, data.senderid, data.text.toLowerCase(), 'pm');
+            }
         }
     } catch (e) {
         bot.pm(data.senderid, 'Oh dear, something\'s gone wrong.');
