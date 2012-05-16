@@ -4,11 +4,11 @@ A customizable Turntable.fm bot written in node.js utilizing [ttapi](https://git
 
 This bot is still relatively early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms. Please report any bugs you find.
 
-**IMPORTANT**: Did your bot break on April 24th? Make sure you update ttapi (by running `npm update` in your bot directory) and updating to 1.0b3 or higher of Sparkle Turntable Bot.
-
 ## Installation
 
 Check out the new [Get Started guide](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki/Get-Started) over on the project's [Wiki page](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki) for detailed installation instructions.
+
+New: SparkleBot is now on npm! Use `npm install sparklebot` to install Sparkle and all dependencies, then use the guide above to set up your config file.
 
 ## Features
 
