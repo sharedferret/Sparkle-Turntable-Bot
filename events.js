@@ -215,29 +215,15 @@ exports.deregisteredEventHandler = function (data) {
     //If waitlist, hold for 30 secs then remove
     if (config.enforcement.waitlist) {
         for (i in waitlist) {
-            if (waitlist[i].id == data.user[0].id) {
+            if (waitlist[i].id == data.user[0].userid) {
                 setTimeout(function() {
                     if (waitlist.length > 0) {
-                        var found = false;
-                        for (j in usersList) {
-                            if (usersList[j].id == data.user[0].id) {
-                                found = true;
-                            }
-                        }
-                        if (found) {
-                            for (k in waitlist) {
-                                if (waitlist[k] == data.user[0].id) {
-                                    waitlist.splice(k, 1);
-                                }
-                            }
-                        }
-                        
+                        waitlist.splice(i, 1);
                     }
                 }, 30000);
-            }
+            }                               
         }
-    }
-    
+    }    
     //Remove user from userlist
     //TODO: Replace this with a .splice fn
     delete usersList[data.user[0].userid];
