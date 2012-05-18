@@ -15,7 +15,8 @@
 		"holiday": "HOLIDAY_GREETINGS"},
 	"login":{
 		"user":"#####",
-		"password":"#####"}},
+		"password":"#####",
+        "host": "localhost"}},
 "lastfm":
 	{"useapi":true,
 	"lastfmkey":"#####"},

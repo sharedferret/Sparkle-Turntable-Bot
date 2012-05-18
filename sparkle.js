@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0.2';
+global.version = '[Sparkle] Version 1.0.3';
 
 global.fs = require('fs');
 global.url = require('url'); 
@@ -199,7 +199,11 @@ function initializeModules () {
 
         //Connects to mysql server
         try {
-            client = mysql.createClient({user: config.database.login.user, password: config.database.login.password, database: config.database.dbname});
+            var dbhost = 'localhost';
+            if (config.database.login.host != null && config.database.login.host != '') {
+                dbhost = config.database.login.host;
+            }
+            client = mysql.createClient({user: config.database.login.user, password: config.database.login.password, database: config.database.dbname, host: dbhost});
         } catch(e) {
             console.log(e);
             console.log('Make sure that a mysql server instance is running and that the '
