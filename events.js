@@ -1,15 +1,12 @@
 exports.readyEventHandler = function (data) {
-
     if (config.database.usedb) {
         setUpDatabase();
     }
-    
 }
 
 //Runs when the room is changed.
 //Updates the currentsong array and users array with new room data.
 exports.roomChangedEventHandler = function(data) {
-
     moderators = data.room.metadata.moderator_id;
 
     //Fill currentsong array with room data
@@ -68,17 +65,6 @@ exports.updateVoteEventHandler = function (data) {
     currentsong.down = data.room.metadata.downvotes;
     currentsong.listeners = data.room.metadata.listeners;
     
-    for (i in sockets) {
-        if (sockets[i].votes == true) {
-            var response = {response: 'currentsong', value: currentsong};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
-    }
-    
     //If the vote exceeds the bonus threshold and the bot's bonus mode
     //is set to VOTE, give a bonus point
     if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
@@ -95,17 +81,13 @@ exports.updateVoteEventHandler = function (data) {
     //      username for downvote events.
     if (config.consolelog) {
         if (data.room.metadata.votelog[0][1] == 'up') {
-            var voteduser = usersList[data.room.metadata.votelog[0][0]];
-                console.log('Vote: [+'
-                + data.room.metadata.upvotes + ' -'
-                + data.room.metadata.downvotes + '] ['
-                + data.room.metadata.votelog[0][0] + '] '
-                + voteduser.name + ': '
-                + data.room.metadata.votelog[0][1]);
+            console.log('\u001b[32m[ Vote ] (+'
+                + data.room.metadata.upvotes + ' -' + data.room.metadata.downvotes
+                + ') ' + usersList[data.room.metadata.votelog[0][0]].name + '\u001b[0m');
         } else {
-            console.log('Vote: [+'
-                + data.room.metadata.upvotes + ' -'
-                + data.room.metadata.downvotes + ']');
+            console.log('\u001b[31m[ Vote ] (+'
+                + data.room.metadata.upvotes + ' -' + data.room.metadata.downvotes
+                + ') Downvote\u001b[0m');
         }
     }
 }
@@ -115,7 +97,7 @@ exports.updateVoteEventHandler = function (data) {
 exports.registeredEventHandler = function (data) {
     //Log event in console
     if (config.consolelog) {
-        console.log('Joined room: ' + data.user[0].name);
+        console.log('\u001b[34m[Joined] ' + data.user[0].name + '\u001b[0m');
     }
     
     //Add user to usersList
@@ -123,18 +105,6 @@ exports.registeredEventHandler = function (data) {
     usersList[user.userid] = user;
     if (currentsong != null) {
         currentsong.listeners++;
-    }
-    
-    //Send event
-    for (i in sockets) {
-        if (sockets[i].online == true) {
-            var response = {response: 'online', value: currentsong.listeners};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
     }
     
     //If the bonus flag is set to VOTE, find the number of awesomes needed
@@ -180,13 +150,14 @@ exports.registeredEventHandler = function (data) {
             [user.userid, user.name]);
     
     //See if banned
-    client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\') FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
+        client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\')'
+            + ' FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
         function cb (error, results, fields) {
             if (results != null && results.length > 0) {
                 bot.boot(user.userid, 'You were banned from this room by ' + results[0]['banned_by']
                     + ' on ' + results[0]['timestamp']);
             }
-    });
+        });
     }
 }
 
@@ -195,22 +166,10 @@ exports.registeredEventHandler = function (data) {
 exports.deregisteredEventHandler = function (data) {
     //Log in console
     if (config.consolelog) {
-        console.log('Left room: ' + data.user[0].name);
+        console.log('\u001b[36m[ Left ] ' + data.user[0].name + '\u001b[0m');
     }
     
     currentsong.listeners--;
-    
-    //Send event
-    for (i in sockets) {
-        if (sockets[i].online == true) {
-            var response = {response: 'online', value: currentsong.listeners};
-            try {
-                sockets[i].socket.write(JSON.stringify(response));
-            } catch(e) {
-                console.log('TCP Error: ' + e);
-            }
-        }
-    }
     
     //If waitlist, hold for 30 secs then remove
     if (config.enforcement.waitlist) {
@@ -235,7 +194,7 @@ exports.deregisteredEventHandler = function (data) {
 exports.speakEventHandler = function (data) {
     //Log in console
     if (config.consolelog) {
-        console.log('Chat [' + data.userid + ' ' + data.name +'] ' + data.text);
+        console.log('[ Chat ] ' + data.name +': ' + data.text);
     }
 
     //Log in db (chatlog table)
@@ -316,7 +275,7 @@ exports.newSongEventHandler = function (data) {
 
     //Log in console
     if (config.consolelog) {
-        console.log('Now Playing: '+currentsong.artist+' - '+currentsong.song);
+        console.log('\u001b[37mNow Playing: ' + currentsong.artist + ' - ' + currentsong.song + '\u001b[0m');
     }
     
     //Reset bonus points
@@ -360,7 +319,7 @@ exports.remDjEventHandler = function (data) {
     //Log in console
     //console.log(data.user[0]);
     if (config.consolelog) {
-        console.log('Stepped down: '+ data.user[0].name + ' [' + data.user[0].userid + ']');
+        console.log('\u001b[35m[ - DJ ] '+ data.user[0].name + '\u001b[0m');
     }
 
     //Adds user to 'step down' vars
@@ -417,10 +376,9 @@ exports.remDjEventHandler = function (data) {
 //Runs when a dj steps up
 //Logs in console
 exports.addDjEventHandler = function(data) {
-    
     //Log in console
     if (config.consolelog) {
-        console.log('Stepped up: ' + data.user[0].name);
+        console.log('\u001b[35m[ + DJ ] ' + data.user[0].name + '\u001b[0m');
     }
     
     //Add to DJ list
@@ -450,6 +408,11 @@ exports.addDjEventHandler = function(data) {
 }
 
 exports.snagEventHandler = function(data) {
+    //Log in console
+    if (config.consolelog) {
+        console.log('[ Snag ]' + data.user[0].name);
+    }
+    
     //Increase song snag count
     currentsong.snags++;
     
@@ -468,6 +431,11 @@ exports.snagEventHandler = function(data) {
 }
 
 exports.bootedUserEventHandler = function(data) {
+    //Log in console
+    if (config.consolelog) {
+        console.log('\u001b[37m\u001b[41m[ Boot ] ' + usersList[data.userid].name + '\u001b[0m');
+    }
+    
     //if the bot was booted, reboot
     if(config.botinfo.userid == data.userid) {
         console.log(config.botinfo.botname + ' was booted.', data);
@@ -523,10 +491,19 @@ exports.updateUserEventHandler = function(data) {
 }
 
 exports.newModeratorEventHandler = function(data) {
+    //Log in console
+    if (config.consolelog) {
+        console.log('\u001b[33m[ +Mod ] ' + usersList[data.userid].name + '\u001b[0m');
+    }
     moderators.push(data.userid);
 }
 
 exports.removeModeratorEventHandler = function(data) {
+    //Log in console
+    if (config.consolelog) {
+        console.log('\u001b[33m\u001b[41m[ -Mod ] ' + usersList[data.userid].name + '\u001b[0m');
+    }
+    
     for (i in moderators) {
         if (moderators[i] == data.userid) {
             moderators.splice(i, 1);
@@ -539,147 +516,6 @@ exports.removeModeratorEventHandler = function(data) {
             bot.addModerator(config.admin);
         }, 200);
     }
-}
-
-exports.tcpConnectEventHandler = function(socket) {
-    socket.write('>> Welcome! Type a command or \'help\' to see a list of commands\n');
-    sockets.push({socket: socket, online: false, votes: false});
-}
-
-exports.tcpEndEventHandler = function(socket) {
-    for (i in sockets) {
-        if (sockets[i].socket.destroyed) {
-            sockets.splice(i, 1);
-        }
-    }
-}
-
-exports.tcpMessageEventHandler = function(socket, msg) {
-    //If the message ends in a ^M character, remove it.
-    if (msg.substring(msg.length - 1).match(/\cM/)) {
-        msg = msg.substring(0, msg.length - 1);
-    }
-    
-    var jsonmsg;
-    try {
-        jsonmsg = JSON.parse(msg);
-    } catch (e) {
-        return;
-    }
-    
-    //JSON message handler
-    var response = {response: 'INVALID QUERY'};
-    if (jsonmsg.command != null) {
-        switch (jsonmsg.command) {
-        
-            //Get commands
-            
-            //Deprecated
-            case 'sendonlineevents':
-                for (i in sockets) {
-                    if (sockets[i].socket == socket) {
-                        if (jsonmsg.parameter == 'true') {
-                            sockets[i].online = true;
-                        } else if (jsonmsg.parameter == 'false') {
-                            sockets[i].online = false;
-                        }
-                        response = {response: 'sendvoteevents', value: sockets[i].online};
-                    }
-                }
-                break;
-                
-            //Deprecated
-            case 'sendvoteevents':
-                for (i in sockets) {
-                    if (sockets[i].socket == socket) {
-                        if (jsonmsg.parameter == 'true') {
-                            sockets[i].votes = true;
-                        } else if (jsonmsg.parameter == 'false') {
-                            sockets[i].votes = false;
-                        }
-                        response = {response: 'sendvoteevents', value: sockets[i].votes};
-                        setTimeout(function () {
-                        socket.write(JSON.stringify({response: 'currentsong', 
-                            value: currentsong}));
-                        }, 200);
-                        
-                    }
-                }
-                break;
-                
-            case 'online':
-                response = {response: 'online', value: currentsong.listeners};
-                break;
-                
-            case 'users': 
-                response = {response: 'users', value: usersList};
-                break;
-                
-            case 'uptime':
-                response = {response: 'uptime', value: uptime};
-                break;
-            
-            case 'currentsong':
-                response = {response: 'currentsong', value: currentsong};
-                break;
-                
-                
-            case 'speak':
-                bot.speak(jsonmsg.parameter);
-                response = {response: 'speak', value: true};
-                break;
-                
-            case 'boot':
-                bot.boot(jsonmsg.parameter);
-                response = {response: 'boot', value: true};
-                break;
-            
-            case 'getconfig':
-                response = {response: 'getconfig', value: config};
-                break;
-            
-            case 'vote':
-                if (jsonmsg.parameter == 'up') {
-                    bot.vote('up');
-                } else if (jsonmsg.parameter == 'down') {
-                    bot.vote('down');
-                }
-                break;
-                
-            case 'stepup':
-                bot.addDj();
-                response = {response: 'stepup', value: true};
-                break;
-            
-            case 'stepdown':
-                bot.remDj(config.botinfo.userid);
-                response = {response: 'stepdown', value: true};
-                break;
-                
-            case 'pulldj':
-                bot.remDj(usertostep);
-                response = {response: 'pulldj', value: true};
-                break;
-                
-            case 'exit':
-                response = {response: 'exit', value: true};
-                socket.end();
-                break;
-                
-            //Database get commands
-            
-            //Set commands
-            /**
-            case 'setconfig':
-                //Authenticate using jsonmsg.login.username, jsonmsg.login.password
-                var newconfig = jsonmsg.parameter;
-                config = newconfig;
-                response = {response: 'setconfig', value: config};
-                break;
-            */
-        }
-    }
-    socket.write(JSON.stringify(response));
 }
 
 exports.httpRequestEventHandler = function(request, response) {

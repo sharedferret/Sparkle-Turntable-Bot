@@ -20,10 +20,6 @@
 "lastfm":
 	{"useapi":true,
 	"lastfmkey":"#####"},
-"tcp":
-	 {"usetcp": false, 
-	"port": 8180, 
-	"host": "localhost"},
 "http":
     {"usehttp": true,
     "port": 8181,

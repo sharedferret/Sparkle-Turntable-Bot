@@ -28,11 +28,9 @@ global.request;
 global.parser;
 global.singalong;
 global.uptime = new Date();
-global.sockets = new Array();
 global.commands = new Array();              //Array of command handlers
 global.httpcommands = new Array();          //Array of HTTP handlers
 global.events = require('./events.js');     //Event handlers
-
 
 initializeModules();
 
@@ -69,50 +67,28 @@ global.currentsong = {
     snags: 0,
     id: null };
     
+// Event listeners
 
-//When the bot is ready, this makes it join the primary room (ROOMID)
-//and sets up the database/tables
 bot.on('ready', events.readyEventHandler);
 
-//Runs when the room is changed.
-//Updates the currentsong array and users array with new room data.
 bot.on('roomChanged', events.roomChangedEventHandler);
 
-//Runs when a user updates their vote
-//Updates current song data and logs vote in console
 bot.on('update_votes', events.updateVoteEventHandler);
 
-//Runs when a user joins
-//Adds user to userlist, logs in console, and greets user in chat.
 bot.on('registered', events.registeredEventHandler);
 
-//Runs when a user leaves the room
-//Removes user from usersList, logs in console
 bot.on('deregistered', events.deregisteredEventHandler);
 
-//Runs when something is said in chat
-//Responds based on coded commands, logs in console, adds chat entry to chatlog table
-//Commands are added under switch(text)
 bot.on('speak', events.speakEventHandler);
 
-//Runs when no song is playing.
 bot.on('nosong', events.noSongEventHandler);
 
-//Runs at the end of a song
-//Logs song in database, reports song stats in chat
 bot.on('endsong', events.endSongEventHandler);
 
-//Runs when a new song is played
-//Populates currentsong data, tells bot to step down if it just played a song,
-//logs new song in console, auto-awesomes song
 bot.on('newsong', events.newSongEventHandler);
 
-//Runs when a dj steps down
-//Logs in console
 bot.on('rem_dj', events.remDjEventHandler);
 
-//Runs when a dj steps up
-//Logs in console
 bot.on('add_dj', events.addDjEventHandler);
 
 bot.on('snagged', events.snagEventHandler);
@@ -126,14 +102,6 @@ bot.on('update_user', events.updateUserEventHandler);
 bot.on('new_moderator', events.newModeratorEventHandler);
 
 bot.on('rem_moderator', events.removeModeratorEventHandler);
-
-//Welcome message for TCP connection
-bot.on('tcpConnect', events.tcpConnectEventHandler);
-
-bot.on('tcpEnd', events.tcpEndEventHandler);
-
-//TCP message handling
-bot.on('tcpMessage', events.tcpMessageEventHandler);
 
 bot.on('httpRequest', events.httpRequestEventHandler);
 
@@ -232,11 +200,6 @@ function initializeModules () {
             + '\nUse the command \'npm install xml2js\' to install.');
         process.exit(33);
     }
-    
-    //Create TCP listeners
-    if (config.tcp.usetcp) {
-        bot.tcpListen(config.tcp.port, config.tcp.host);
-    }
 
     //Create HTTP listeners
     if (config.http.usehttp) {
@@ -252,7 +215,7 @@ function initializeModules () {
                 enabled: command.enabled, matchStart: command.matchStart});
         }
     } catch (e) {
-    
+        //
     }
     
     //Load http commands
@@ -264,21 +227,12 @@ function initializeModules () {
                 enabled: command.enabled});
         }
     } catch (e) {
-    
+        //
     }
 }
 
 //Sets up the database
 global.setUpDatabase = function() {
-//Creates DB and tables if needed, connects to db
-    //client.query('CREATE DATABASE ' + config.database.dbname,
-    //    function(error) {
-    //        if(error && error.number != mysql.ERROR_DB_CREATE_EXISTS) {
-    //            throw (error);
-    //        }
-    //});
-    //client.query('USE '+ config.database.dbname);
-
     //song table
     client.query('CREATE TABLE ' + config.database.tablenames.song
         + '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
@@ -378,6 +332,10 @@ global.admincheck = function (userid) {
 //TODO: Implement
 global.checkAuth = function (givenKey) {
     return false;
+}
+
+global.checkAFK = function() {
+    //
 }
 
 //The bot will respond to a Reptar call with a variant of 'rawr!' based on
@@ -785,4 +743,3 @@ global.handleCommand = function (name, userid, text, source) {
         }
     }    
 }
-
