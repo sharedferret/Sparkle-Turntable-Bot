@@ -410,7 +410,7 @@ exports.addDjEventHandler = function(data) {
 exports.snagEventHandler = function(data) {
     //Log in console
     if (config.consolelog) {
-        console.log('[ Snag ]' + data.user[0].name);
+        console.log('[ Snag ] ' + usersList[data.userid].name);
     }
     
     //Increase song snag count
