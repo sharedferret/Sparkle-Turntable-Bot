@@ -1,6 +1,6 @@
 //Removes the user from the stage
 
-exports.name = '\/stagedive';
+exports.name = '\\/stagedive';
 exports.hidden = true;
 exports.enabled = true;
 exports.matchStart = false;

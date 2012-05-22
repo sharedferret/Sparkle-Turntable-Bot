@@ -1,4 +1,4 @@
-exports.name = '\/bonus';
+exports.name = '\\/bonus';
 exports.hidden = true;
 exports.enabled = true;
 exports.matchStart = false;

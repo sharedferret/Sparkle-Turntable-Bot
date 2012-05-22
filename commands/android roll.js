@@ -2,7 +2,7 @@
 //If vote bonus is set to DICE, the bot will awesome if a
 //4 or higher is rolled.
 
-exports.name = '\/roll';
+exports.name = '\\/roll';
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = true;
