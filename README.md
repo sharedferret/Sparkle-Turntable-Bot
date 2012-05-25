@@ -2,7 +2,7 @@
 
 A customizable Turntable.fm bot written in node.js utilizing [ttapi](https://github.com/alaingilbert/Turntable-API).
 
-This bot is still relatively early in development, and some features are developed for/catered to the Indie/Classic Alt room, and may not apply to all rooms. Please report any bugs you find.
+Note (5/25/12): Starting in June, I won't be able to devote a lot of time to this project. I'll continue to fix reported bugs and merge in pull requests, though.
 
 ## Installation
 
