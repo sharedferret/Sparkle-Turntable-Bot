@@ -70,7 +70,9 @@ exports.updateVoteEventHandler = function (data) {
     if ((config.bonusvote == 'VOTE') && !bonusvote && (currentsong.djid != config.botinfo.userid)) {
         if (currentsong.up >= bonusvotepoints) {
             bot.vote('up');
-            bot.speak('Bonus!');
+            if (config.enforcement.announcebonus) {
+                bot.speak('Bonus!');
+            }
             bonuspoints.push('xxMEOWxx');
             bonusvote = true;
         }
@@ -249,9 +251,13 @@ exports.endSongEventHandler = function (data) {
 
     //Report song stats in chat
     if (config.responses.reportsongstats) {
-        bot.speak(currentsong.song + ' stats: awesomes: '
+        var endsongresponse = currentsong.song + ' stats: awesomes: '
             + currentsong.up + ' lames: ' + currentsong.down
-            + ' snags: ' + currentsong.snags);
+            + ' snags: ' + currentsong.snags;
+        if (config.enforcement.waitlist) {
+            endsongresponse += ' waitlist: ' + waitlist.length + ' people.';
+        }
+        bot.speak(endsongresponse);
     }
     
     

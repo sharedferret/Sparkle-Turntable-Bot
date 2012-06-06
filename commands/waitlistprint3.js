@@ -1,4 +1,4 @@
-exports.name = '.pq';
+exports.name = 'q';
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;

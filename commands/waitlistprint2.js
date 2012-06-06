@@ -12,7 +12,7 @@ exports.handler = function(data) {
                 response += ('[' + j + '] ' + waitlist[i].name + ', ');
             }
         } else {
-            response = 'The queue is empty.';
+            response = 'The queue is empty.  ';
         }
         output({text: response.substring(0, response.length - 2), destination: data.source,
             userid: data.userid});
