@@ -14,7 +14,7 @@
  *
 */
 var args = process.argv;
-global.version = '[Sparkle] Version 1.0.7';
+global.version = '[Sparkle] Version 1.0.8';
 
 global.fs = require('fs');
 global.url = require('url'); 
@@ -291,16 +291,14 @@ global.setUpDatabase = function() {
 }
 
 global.populateSongData = function(data) {
+    currentsong = data.room.metadata.current_song;
     currentsong.artist = data.room.metadata.current_song.metadata.artist;
     currentsong.song = data.room.metadata.current_song.metadata.song;
-    currentsong.djname = data.room.metadata.current_song.djname;
-    currentsong.djid = data.room.metadata.current_song.djid;
     currentsong.up = data.room.metadata.upvotes;
     currentsong.down = data.room.metadata.downvotes;
     currentsong.listeners = data.room.metadata.listeners;
     currentsong.started = data.room.metadata.current_song.starttime;
     currentsong.snags = 0;
-    currentsong.id = data.room.metadata.current_song._id;
 }
 
 //Format: output({text: [required], destination: [required],
