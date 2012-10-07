@@ -7,7 +7,7 @@ exports.handler = function(data) {
         request('http://earthquake.usgs.gov/earthquakes/catalogs/1day-M2.5.xml', 
         function (error, response, body) {
             parser.parseString(body, function (err, result) {
-                var earthquakes = result.entry;
+                var earthquakes = result.feed.entry;
                 if (earthquakes == null) {
                     bot.speak('Rock me like a... uhh.. earthquake? Well, that didn\'t work');
                     console.log('Unable to parse earthquake info');
