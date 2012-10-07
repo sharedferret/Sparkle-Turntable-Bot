@@ -2,13 +2,13 @@
 
 A customizable Turntable.fm bot written in node.js utilizing [ttapi](https://github.com/alaingilbert/Turntable-API).
 
-This project is no longer in development. If you have new features or bugfixes, feel free to submit a pull request.
+This project is still maintained, but I don't have a lot of time for development (so updates will probably be slow). If you have new features or bugfixes, please submit a pull request.
 
 ## Installation
 
     npm install sparklebot
 
-Check out the new [Get Started guide](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki/Get-Started) over on the project's [Wiki page](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki) for detailed installation instructions.
+Check out the [Get Started guide](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki/Get-Started) over on the project's [Wiki page](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki) for detailed installation instructions.
 
 ## Features
 
