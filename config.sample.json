@@ -12,6 +12,7 @@
 		{"song": "SONGLIST", 
 		"chat": "CHATLOG", 
 		"user": "USERS", 
+		"banned": "BANNEDUSERS",
 		"holiday": "HOLIDAY_GREETINGS"},
 	"login":{
 		"user":"#####",

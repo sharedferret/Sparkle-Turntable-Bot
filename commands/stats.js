@@ -14,8 +14,8 @@ exports.handler = function(data) {
             + config.database.dbname + '.' + config.database.tablenames.song + ' group by djid) as djtable');
         client.query('SELECT @uniquesongs as uniquesongs, @numdjs as numdjs, '
             + 'count(*) as total, sum(up) as up, avg(up) as avgup, '
-            + 'sum(down) as down, avg(down) as avgdown FROM ' + config.database.dbname
-            + '.' + config.database.tablenames.song,
+            + 'sum(down) as down, avg(down) as avgdown FROM '
+            + config.database.dbname + '.' + config.database.tablenames.song,
             function select(error, results, fields) {
                 var response = ('In this room, '
                     + results[0]['total'] + ' songs ('
