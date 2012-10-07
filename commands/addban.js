@@ -18,7 +18,7 @@ exports.handler = function(data) {
 }
 
 function addToBanList(userid, name, bannedby) {
-    client.query('INSERT INTO BANNED_USERS SET userid = ?, banned_by = ?, timestamp = NOW()',
+    client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user + ' SET userid = ?, banned_by = ?, timestamp = NOW()',
             [userid, bannedby]);
     bot.speak(name + ' (UID ' + userid + ') has been banned by ' + bannedby + '.');
     bot.boot(userid, 'You have been banned by ' + bannedby + '.');
