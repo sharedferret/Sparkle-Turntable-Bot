@@ -8,6 +8,11 @@ exports.handler = function(data) {
         function (error, response, body) {
             parser.parseString(body, function (err, result) {
                 var earthquakes = result.entry;
+                if (earthquakes == null) {
+                    bot.speak('Rock me like a... uhh.. earthquake? Well, that didn\'t work');
+                    console.log('Unable to parse earthquake info');
+                    return;
+                }
                 var rp = 'Recent earthquakes: ';
                 for (var i = 0; i < earthquakes.length && i < 3; i++) {
                     var timeelapsed = new Date() - new Date(earthquakes[i].updated);

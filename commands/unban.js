@@ -16,7 +16,7 @@ exports.handler = function(data) {
 }
 
 function removeFromBanList(userid, name, bannedby) {
-    client.query('DELETE FROM BANNED_USERS WHERE userid = ?',
+    client.query('DELETE FROM ' + config.database.dbname + '.' + config.database.tablenames.banned + ' WHERE userid = ?',
             [userid], function (error, results, fields) {
             if (error == null) {
                 bot.speak(name + ' has been unbanned.');

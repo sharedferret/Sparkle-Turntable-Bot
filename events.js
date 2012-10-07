@@ -153,7 +153,7 @@ exports.registeredEventHandler = function (data) {
     
     //See if banned
         client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\')'
-            + ' FROM BANNED_USERS WHERE userid LIKE \'' + user.userid + '\'',
+            + ' FROM ' + config.database.dbname + '.' + config.database.tablenames.banned + ' WHERE userid LIKE \'' + user.userid + '\'',
         function cb (error, results, fields) {
             if (results != null && results.length > 0) {
                 bot.boot(user.userid, 'You were banned from this room by ' + results[0]['banned_by']
@@ -463,7 +463,7 @@ exports.pmEventHandler = function(data) {
             handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
         //Case 2: In DB. We have their name.
         } else if (config.database.usedb) {
-            client.query('SELECT username FROM `USERS` WHERE userid LIKE \'' + data.senderid
+            client.query('SELECT username FROM ' + config.database.dbname + '.' + config.database.tablenames.users + ' WHERE userid LIKE \'' + data.senderid
                 + '\' ORDER BY lastseen DESC LIMIT 1',
                 function cb(error, results, fields) {
                     if (results[0] != null) {
