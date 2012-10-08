@@ -439,7 +439,7 @@ exports.snagEventHandler = function(data) {
 exports.bootedUserEventHandler = function(data) {
     //Log in console
     if (config.consolelog) {
-        console.log('\u001b[37m\u001b[41m[ Boot ] ' + usersList[data.userid].name + '\u001b[0m');
+        console.log('\u001b[37m\u001b[41m[ Boot ] ' + (usersList[data.userid] != null ? usersList[data.userid].name : data.userid) + '\u001b[0m');
     }
     
     //if the bot was booted, reboot

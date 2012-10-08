@@ -215,7 +215,7 @@ function initializeModules () {
                 enabled: command.enabled, matchStart: command.matchStart});
         }
     } catch (e) {
-        //
+        console.log('Unable to load command: ', e);
     }
     
     //Load http commands
@@ -379,8 +379,8 @@ global.addToDb = function (data) {
 }
 
 global.welcomeUser = function (name, id) {
-    //Ignore ttdashboard bots
-    if (!name.match(/^ttdashboard/)) {
+    //Ignore ttstats bots
+    if (!name.match(/^ttstats/)) {
         if (id == '4f5628b9a3f7515810008122') {
             bot.speak(':cat: <3 :wolf:');
         }

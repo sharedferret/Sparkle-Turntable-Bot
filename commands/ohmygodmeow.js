@@ -1,6 +1,6 @@
 //Bot freakout
 
-exports.name = 'oh my god meow';
+exports.name = 'oh my god ' + config.botinfo.botname;
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;
