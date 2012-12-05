@@ -116,8 +116,11 @@ exports.registeredEventHandler = function (data) {
 
     //Greet user
     //Displays custom greetings for certain members
+    //Wait for user to join chatserver before welcoming
     if(config.responses.welcomeusers) {
-        welcomeUser(user.name, user.userid);
+        setTimeout(function () {
+            welcomeUser(user.name, user.userid);
+        }, 1000);
     }
     
     if (config.responses.welcomepm) {
@@ -466,7 +469,7 @@ exports.pmEventHandler = function(data) {
             client.query('SELECT username FROM ' + config.database.dbname + '.' + config.database.tablenames.users + ' WHERE userid LIKE \'' + data.senderid
                 + '\' ORDER BY lastseen DESC LIMIT 1',
                 function cb(error, results, fields) {
-                    if (results[0] != null) {
+                    if (results != null && results[0] != null) {
                         handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
                     } else {
                         bot.getProfile(data.senderid, function(d) {
