@@ -173,7 +173,7 @@ function initializeModules() {
 				dbhost = config.database.login.host;
 			}
 			client =
-				mysql.createClient({user:config.database.login.user, password:config.database.login.password, database:config.database.dbname, host:dbhost});
+				mysql.createConnection({user:config.database.login.user, password:config.database.login.password, database:config.database.dbname, host:dbhost});
 		} catch(e) {
 			console.log(e);
 			console.log('Make sure that a mysql server instance is running and that the '

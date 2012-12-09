@@ -324,7 +324,16 @@ exports.newSongEventHandler = function (data) {
         setTimeout(function() {
             bot.vote('up');
         }, randomwait * 1000);
-    }
+    } else if(config.bonusvote == 'OPTIMIZE' && currentsong.djid != config.botinfo.userid) {
+		var time = Math.floor(Math.random() *.6) + .3;
+		setTimeout(function() {
+			if(currentsong.down == 0) {
+				bot.vote('up');
+			} else if(currentsong.down > currentsong.up) {
+				bot.vote('down');
+			}
+		}, time * currentsong.metadata.length * 1000);
+	}
     
     //Decrement partialdjs list
     for (i in partialdjs) {
