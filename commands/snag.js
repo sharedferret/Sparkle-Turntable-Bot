@@ -1,6 +1,6 @@
 //Snags a song to the bot's playlist
 
-exports.name = 'addtoplaylist';
+exports.name = '.snag';
 exports.hidden = true;
 exports.enabled = true;
 exports.matchStart = false;

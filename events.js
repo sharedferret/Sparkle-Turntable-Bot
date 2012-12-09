@@ -2,6 +2,10 @@ exports.readyEventHandler = function (data) {
     if (config.database.usedb) {
         setUpDatabase();
     }
+
+	loop();
+
+
 }
 
 //Runs when the room is changed.
@@ -77,6 +81,21 @@ exports.updateVoteEventHandler = function (data) {
             bonusvote = true;
         }
     }
+
+	// Update the last activity for the dj if it was sending the message and remove the warning
+	if(config.enforcement.enforceroom && config.enforcement.idle.idlerules) {
+		var votes = data.room.metadata.votelog;
+		for(var i = 0; i < votes.length; i++) {
+			var vote = votes[i];
+			var userid = vote[0];
+			for(var i in djs) {
+				if(djs[i].id == userid) {
+					djs[i].lastActivity = new Date();
+					djs[i].warned = false;
+				}
+			}
+		}
+	}
 
     //Log vote in console
     //Note: Username only displayed for upvotes, since TT doesn't broadcast
@@ -218,6 +237,16 @@ exports.speakEventHandler = function (data) {
     if (config.responses.respond) {
         handleCommand(data.name, data.userid, data.text.toLowerCase(), 'speak');
     }
+
+	// Update the last activity for the dj if it was sending the message and remove the warning
+	if(config.enforcement.enforceroom && config.enforcement.idle.idlerules) {
+		for(var i in djs) {
+			if(djs[i].id == data.userid) {
+				djs[i].lastActivity = new Date();
+				djs[i].warned = false;
+			}
+		}
+	}
 }
 
 exports.noSongEventHandler = function(data) {
@@ -234,8 +263,8 @@ exports.endSongEventHandler = function (data) {
 
     //If a DJ that needed to step down hasn't by the end of the
     //next DJ's song, remove them immediately
-    if (config.enforcement.enforceroom && !userstepped) {
-        bot.remDj(usertostep);
+    if (config.enforcement.enforceroom && usertostep && !userstepped) {
+		bot.remDj(usertostep);
     }
     
     //Used for room enforcement
@@ -275,9 +304,7 @@ exports.newSongEventHandler = function (data) {
 
     //Enforce stepdown rules
     if (usertostep != null) {
-        if (usertostep == config.botinfo.userid) {
-            bot.remDj(config.botinfo.userid);
-        } else if (config.enforcement.enforceroom) {
+        if (config.enforcement.enforceroom) {
             enforceRoom();
         }
     }
@@ -370,6 +397,12 @@ exports.remDjEventHandler = function (data) {
             djs.splice(i, 1);
         }
     }
+
+	// Check if the bot was removed
+	if(isBot(data.user[0].userid)) {
+		isdjing = false;
+	}
+
     
     //If more than one DJ spot is open, set free-for-all mode to true
     if (config.enforcement.enforceroom && config.enforcement.ffarules.multiplespotffa) {
@@ -392,17 +425,23 @@ exports.addDjEventHandler = function(data) {
     
     //Add to DJ list
     if (config.enforcement.enforceroom) {
-        var toplay = config.enforcement.songstoplay;
-        //If they've been up recently, modify their remaining count
-        for (i in partialdjs) {
-            if (partialdjs[i].id == data.user[0].userid) {
-                toplay = partialdjs[i].lefttoplay;
-                partialdjs.splice(i, 1);
-            }
-        }
-        djs.push({id: data.user[0].userid, remaining: toplay});
+		var toplay = Infinity;
+
+        if(config.enforcement.songslimit.limitsongs) {
+			toplay = config.enforcement.songslimit.maxsongs;
+
+			//If they've been up recently, modify their remaining count
+			for (i in partialdjs) {
+				if (partialdjs[i].id == data.user[0].userid) {
+					toplay = partialdjs[i].lefttoplay;
+					partialdjs.splice(i, 1);
+				}
+			}
+		}
+
+        djs.push({id: data.user[0].userid, remaining: toplay, lastActivity: new Date(), user: data.user[0] });
     } else {
-        djs.push({id: data.user[0].userid, remaining: 0});
+        djs.push({id: data.user[0].userid, remaining: Infinity});
     }
     
 
@@ -460,7 +499,18 @@ exports.bootedUserEventHandler = function(data) {
 }
 
 exports.pmEventHandler = function(data) {
-    try {
+
+	// Update the last activity for the dj if it was sending the message and remove the warning
+	if(config.enforcement.enforceroom && config.enforcement.idle.idlerules) {
+		for(var i in djs) {
+			if(djs[i].id == data.senderid) {
+				djs[i].lastActivity = new Date();
+				djs[i].warned = false;
+			}
+		}
+	}
+
+	try {
         //Case 1: In room. We have their name.
         if (usersList[data.senderid] != null) {
             handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');

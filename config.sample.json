@@ -1,59 +1,84 @@
-{"botinfo":
-	{"auth":"auth+live+#####",
-	"userid":"#####",
-	"botname":"meow"},
-"roomid":"4f1e02590c4cc807574030f1",
-"admin":"#####",
-"database":
-	{"usedb":true,
-	"dbname":"nodejs_mysql_treehouse", 
-    "logchat":false,
-	"tablenames": 
-		{"song": "SONGLIST", 
-		"chat": "CHATLOG", 
-		"user": "USERS", 
-		"banned": "BANNEDUSERS",
-		"holiday": "HOLIDAY_GREETINGS"},
-	"login":{
-		"user":"#####",
-		"password":"#####",
-        "host": "localhost"}},
-"lastfm":
-	{"useapi":true,
-	"lastfmkey":"#####"},
-"http":
-    {"usehttp": true,
-    "port": 8181,
-    "host": "localhost"},
-"responses":
-	{"respond":true,
-    "announcebonus":true,
-	"reportsongstats":true,
-	"welcomeusers":true,
-    "welcomepm":true,
-    "alwayspm":false,
-    "pmgreet": "Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type 'commands' to see a list of commands I can respond to.",
-	"greeting":"Welcome, ",
-	"ownerresponse":"sharedferret made me!",
-	"sing":true, 
-	"rules": 
-		{"description": "No queue, fastest finger, play two songs and step down", 
-		"link": "http://tinyurl.com/63hr2jl"}
+{"botinfo":       {
+	"auth":   "auth+live+#####",
+	"userid": "#####",
+	"botname":"meow"
+},
+	"roomid":     "4f1e02590c4cc807574030f1",
+	"admin":      "#####",
+	"database":   {
+		"usedb":     true,
+		"dbname":    "nodejs_mysql_treehouse",
+		"logchat":   false,
+		"tablenames":{
+			"song":   "SONGLIST",
+			"chat":   "CHATLOG",
+			"user":   "USERS",
+			"banned": "BANNEDUSERS",
+			"holiday":"HOLIDAY_GREETINGS"
+		},
+		"login":     {
+			"user":    "#####",
+			"password":"#####",
+			"host":    "localhost"
+		}
 	},
-"consolelog":false,
-"bonusvote":"VOTE",
-"enforcement":
-	{"enforceroom":true,
-    "waitlist":false,
-	"songstoplay":2,
-	"stepuprules":
-		{"waittostepup":true,
-		"waittype":"SONGS",
-		"length":4},
-	"ffarules":
-		{"multiplespotffa":true,
-		"timerffa":true,
-		"timeout":10}
-    }, 
-"maintenance": 
-	{"autorejoin": true}}
+	"lastfm":     {
+		"useapi":   true,
+		"lastfmkey":"#####"
+	},
+	"http":       {
+		"usehttp":true,
+		"port":   8181,
+		"host":   "localhost"
+	},
+	"responses":  {
+		"respond":        true,
+		"announcebonus":  true,
+		"reportsongstats":true,
+		"welcomeusers":   true,
+		"welcomepm":      true,
+		"alwayspm":       false,
+		"pmgreet":        "Welcome to Indie/Classic Alternative 1 & Done! No queue, fastest finger, play one song and step down. Full rules at http://tinyurl.com/63hr2jl . Type 'commands' to see a list of commands I can respond to.",
+		"greeting":       "Welcome, ",
+		"ownerresponse":  "sharedferret made me!",
+		"sing":           true,
+		"rules":          {
+			"description":"No queue, fastest finger, play two songs and step down",
+			"link":       "http://tinyurl.com/63hr2jl"
+		}
+	},
+	"consolelog": false,
+	"bonusvote":  "VOTE",
+	"djing":      {
+		"botdj": true,
+		"minDjs":1,
+		"maxDjs":3
+	},
+	"enforcement":{
+		"enforceroom":true,
+		"waitlist":   false,
+		"songslimit": {
+			"limitsongs":true,
+			"maxsongs":  2,
+			"minDjs":    5
+		},
+		"stepuprules":{
+			"waittostepup":true,
+			"waittype":    "SONGS",
+			"length":      4
+		},
+		"ffarules":   {
+			"multiplespotffa":true,
+			"timerffa":       true,
+			"timeout":        10
+		},
+		"idle":       {
+			"idlerules":      true,
+			"idlewarntime":   10,
+			"idleremovaltime":12,
+			"minDjs":         5
+		}
+	},
+	"maintenance":{
+		"autorejoin":true
+	}}
