@@ -237,7 +237,7 @@ function initializeModules() {
 //Sets up the database
 global.setUpDatabase = function() {
 	//song table
-	client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.song
+	client.query('CREATE TABLE IF NOT EXISTS ' + config.database.dbname + '.' + config.database.tablenames.song
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 		+ ' artist VARCHAR(255),'
 		+ ' song VARCHAR(255),'
@@ -257,7 +257,7 @@ global.setUpDatabase = function() {
 		});
 
 	//chat table
-	client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.chat
+	client.query('CREATE TABLE IF NOT EXISTS ' + config.database.dbname + '.' + config.database.tablenames.chat
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
 		+ ' userid VARCHAR(255),'
 		+ ' chat VARCHAR(255),'
@@ -270,7 +270,7 @@ global.setUpDatabase = function() {
 		});
 
 	//user table
-	client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.user
+	client.query('CREATE TABLE IF NOT EXISTS ' + config.database.dbname + '.' + config.database.tablenames.user
 		+ '(userid VARCHAR(255), '
 		+ 'username VARCHAR(255), '
 		+ 'lastseen DATETIME, '
@@ -282,7 +282,7 @@ global.setUpDatabase = function() {
 			}
 		});
 
-	client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.banned
+	client.query('CREATE TABLE IF NOT EXISTS ' + config.database.dbname + '.' + config.database.tablenames.banned
 		+ '(id INT(11) AUTO_INCREMENT PRIMARY KEY, '
 		+ 'userid VARCHAR(255), '
 		+ 'banned_by VARCHAR(255), '

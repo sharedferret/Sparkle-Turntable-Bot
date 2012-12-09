@@ -283,9 +283,9 @@ exports.endSongEventHandler = function (data) {
 
     //Report song stats in chat
     if (config.responses.reportsongstats) {
-        var endsongresponse = currentsong.song + ' stats: awesomes: '
-            + currentsong.up + ' lames: ' + currentsong.down
-            + ' snags: ' + currentsong.snags;
+        var endsongresponse = currentsong.song + ' stats: Awesomes: '
+            + currentsong.up + ':+1: Lames: ' + currentsong.down
+            + ':-1: Snags: ' + currentsong.snags + ':heart:';
         if (config.enforcement.waitlist) {
             endsongresponse += ' waitlist: ' + waitlist.length + ' people.';
         }
