@@ -325,7 +325,7 @@ exports.newSongEventHandler = function (data) {
             bot.vote('up');
         }, randomwait * 1000);
     } else if(config.bonusvote == 'OPTIMIZE' && currentsong.djid != config.botinfo.userid) {
-		var time = Math.floor(Math.random() *.6) + .3;
+		var time = Math.random() *.6 + .3;
 		setTimeout(function() {
 			if(currentsong.down == 0) {
 				bot.vote('up');

@@ -689,8 +689,8 @@ global.canUserStep = function(name, userid) {
 
 	//Case 3: Longer than FFA timeout
 	if(config.enforcement.ffarules.timerffa && (djs.length < 5)
-		&& ((new Date()).getTime() - enforcementtimeout > (config.enforcement.ffarules.length * 1000))) {
-		return 'It\'s been ' + config.enforcement.ffarules.length + ' seconds, so anyone can step up!';
+		&& ((new Date()).getTime() - enforcementtimeout > (config.enforcement.ffarules.timeout * 1000))) {
+		return 'It\'s been ' + config.enforcement.ffarules.timeout + ' seconds, so anyone can step up!';
 	}
 
 	//Case 4: DJ in queue

@@ -1,7 +1,8 @@
 {"botinfo":       {
 	"auth":   "auth+live+#####",
 	"userid": "#####",
-	"botname":"meow"
+	"botname":"meow",
+	"laptop": "linux"
 },
 	"roomid":     "4f1e02590c4cc807574030f1",
 	"admin":      "#####",
