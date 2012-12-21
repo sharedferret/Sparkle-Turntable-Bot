@@ -337,10 +337,7 @@ global.loop = function() {
 			checkAFK();
 		}
 
-		if(config.djing.botdj) {
-			checkDjs();
-		}
-	}, 5000);
+	}, 20000);
 }
 
 //TODO: Implement
@@ -388,10 +385,8 @@ global.checkDjs = function() {
 		if(isdjing) {
 			return;
 		}
-		isdjing = true;
 		bot.addDj();
 	} else if(isdjing) {
-		isdjing = false;
 		bot.remDj();
 	}
 };
@@ -469,7 +464,7 @@ global.welcomeUser = function(name, id) {
 global.enforceRoom = function() {
 	setTimeout(function() {
 		if(!userstepped) {
-			bot.speak('@' + usersList[usertostep].name + ', please step down');
+			bot.speak('@' + usersList[usertostep].name + ', you have played ' + config.enforcement.songslimit.maxsongs + ' songs. Please step down to allow others to DJ.');
 			setTimeout(function() {
 				if(!userstepped) {
 					bot.remDj(usertostep);
