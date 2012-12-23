@@ -25,7 +25,3 @@ The bot can:
 * Log song statistics and chat entries in a MySQL database
 * Receive and respond to commands via a HTTP RESTful API
 * Manage a waitlist/queue for a room
-
-## Help
-
-If you have a **nontrivial** question, feel free to contact me. I'm usually hanging out in the [Indie/Classic Alt 1+Done room](http://turntable.fm/indieclassic_alternative_1_done) on Turntable.
