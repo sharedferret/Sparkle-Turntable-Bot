@@ -288,7 +288,13 @@ exports.endSongEventHandler = function (data) {
 
 	//Delete the current song
 	currentsong = {};
-	checkDjs();
+
+	// Check the number of djs at the beginning of song, but wait 10 seconds to fix turntable bug of
+	// continuing to play after the bot steps down.
+	setTimeout(function() {
+		checkDjs();
+	}, 10 * 1000);
+
 }
 
 //Runs when a new song is played
@@ -406,7 +412,7 @@ exports.remDjEventHandler = function (data) {
 	// Check if the bot was removed
 	if(isBot(data.user[0].userid)) {
 		isdjing = false;
-	} else if(currentsong.djid != config.botinfo.userid) { // Don't remove the bot in th middle of a song
+	} else if(!isBot(currentsong.djid)) { // Don't remove the bot in th middle of a song
 		checkDjs();
 	}
 

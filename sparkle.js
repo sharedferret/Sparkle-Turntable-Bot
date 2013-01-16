@@ -174,12 +174,35 @@ function initializeModules() {
 			}
 			client =
 				mysql.createConnection({user:config.database.login.user, password:config.database.login.password, database:config.database.dbname, host:dbhost});
+
+
 		} catch(e) {
 			console.log(e);
 			console.log('Make sure that a mysql server instance is running and that the '
 				+ 'username and password information in config.js are correct.');
 			console.log('Starting bot without database functionality.');
 			config.database.usedb = false;
+		}
+
+		handleDisconnect(client);
+
+		function handleDisconnect(client) {
+			client.on('error', function(err) {
+				if(!err.fatal) {
+					return;
+				}
+				if(err.code !== 'PROTOCOL_CONNECTION_LOST') {
+					throw err;
+				}
+				if(config.consolelog) {
+					console.log('Re-connecting lost connection: ' + err.stack);
+				}
+
+				client =
+					mysql.createConnection({user:config.database.login.user, password:config.database.login.password, database:config.database.dbname, host:dbhost});
+				handleDisconnect(client);
+				client.connect();
+			});
 		}
 	}
 
@@ -353,7 +376,8 @@ global.checkAFK = function() {
 
 	if(djs.length >= config.enforcement.idle.minDjs) {
 		for(i in djs) {
-			if(!isBot(djs[i].id) &&  (new Date()) - djs[i].lastActivity > 1000 * 60 * config.enforcement.idle.idlewarntime) {
+			if(!isBot(djs[i].id) &&
+				(new Date()) - djs[i].lastActivity > 1000 * 60 * config.enforcement.idle.idlewarntime) {
 				// If they were already warned don't do it again
 				if(djs[i].warned) {
 					return;
@@ -367,9 +391,9 @@ global.checkAFK = function() {
 					setTimeout(function() {
 						for(j in djs) {
 							if(id == djs[j].id && djs[j].warned) {
-								bot.speak('@' + djs[i].user.name + ', you have been idle for ' +
+								bot.speak('@' + djs[j].user.name + ', you have been idle for ' +
 									config.enforcement.idle.idleremovaltime + ' minutes. You are no longer DJ.');
-								bot.remDj(djs[i].id);
+								bot.remDj(djs[j].id);
 							}
 						}
 					}, 1000 * 60 * (config.enforcement.idle.idleremovaltime - config.enforcement.idle.idlewarntime));
@@ -381,7 +405,7 @@ global.checkAFK = function() {
 
 global.checkDjs = function() {
 	var extra = isdjing ? -1 : 0;
-	if(djs.length + extra >= config.djing.minDjs  && djs.length + extra <= config.djing.maxDjs) {
+	if(djs.length + extra >= config.djing.minDjs && djs.length + extra <= config.djing.maxDjs) {
 		if(isdjing) {
 			return;
 		}
@@ -464,7 +488,8 @@ global.welcomeUser = function(name, id) {
 global.enforceRoom = function() {
 	setTimeout(function() {
 		if(!userstepped) {
-			bot.speak('@' + usersList[usertostep].name + ', you have played ' + config.enforcement.songslimit.maxsongs + ' songs. Please step down to allow others to DJ.');
+			bot.speak('@' + usersList[usertostep].name + ', you have played ' + config.enforcement.songslimit.maxsongs +
+				' songs. Please step down to allow others to DJ.');
 			setTimeout(function() {
 				if(!userstepped) {
 					bot.remDj(usertostep);
@@ -488,7 +513,6 @@ global.reducePastDJCounts = function(djid) {
 			}
 		}
 	}
-
 
 	//Reduces past DJ counts and removes from past dj list if necessary
 	if(config.enforcement.stepuprules.waittostepup) {
@@ -801,3 +825,4 @@ global.handleCommand = function(name, userid, text, source) {
 		}
 	}
 }
+
