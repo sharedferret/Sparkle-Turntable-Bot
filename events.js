@@ -5,7 +5,6 @@ exports.readyEventHandler = function (data) {
 
 	loop();
 
-
 }
 
 //Runs when the room is changed.
@@ -20,14 +19,15 @@ exports.roomChangedEventHandler = function(data) {
         }
 
         //Creates the dj list
-        for (i in data.room.metadata.djs) {
+        for (var i in data.room.metadata.djs) {
             if (config.enforcement.enforceroom) {
-                djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay});
+                djs.push({id: data.room.metadata.djs[i], remaining: config.enforcement.songstoplay, lastActivity: new Date()});
             } else {
-                djs.push({id: data.room.metadata.djs[i], remaining: 0});
+                djs.push({id: data.room.metadata.djs[i], remaining: Infinity});
             }
         }
     }
+	checkDjs();
     
     //If the bonus flag is set to VOTE, find the number of awesomes needed for
     //the current song
@@ -192,6 +192,7 @@ exports.deregisteredEventHandler = function (data) {
     if (config.consolelog) {
         console.log('\u001b[36m[ Left ] ' + data.user[0].name + '\u001b[0m');
     }
+
     
     currentsong.listeners--;
     
@@ -272,13 +273,6 @@ exports.endSongEventHandler = function (data) {
     if (config.enforcement.enforceroom) {
         reducePastDJCounts(currentsong.djid);
     }
-    else {
-        for (i in djs) {
-            if (djs[i].id == currentsong.djid) {
-                djs[i].remaining++;
-            }
-        }
-    }
     
 
     //Report song stats in chat
@@ -291,8 +285,16 @@ exports.endSongEventHandler = function (data) {
         }
         bot.speak(endsongresponse);
     }
-    
-    
+
+	//Delete the current song
+	currentsong = {};
+
+	// Check the number of djs at the beginning of song, but wait 10 seconds to fix turntable bug of
+	// continuing to play after the bot steps down.
+	setTimeout(function() {
+		checkDjs();
+	}, 10 * 1000);
+
 }
 
 //Runs when a new song is played
@@ -327,7 +329,7 @@ exports.newSongEventHandler = function (data) {
     } else if(config.bonusvote == 'OPTIMIZE' && currentsong.djid != config.botinfo.userid) {
 		var time = Math.random() *.6 + .3;
 		setTimeout(function() {
-			if(currentsong.down == 0) {
+			if(currentsong.down == 0 && currentsong.up > 0) {
 				bot.vote('up');
 			} else if(currentsong.down > currentsong.up) {
 				bot.vote('down');
@@ -410,6 +412,8 @@ exports.remDjEventHandler = function (data) {
 	// Check if the bot was removed
 	if(isBot(data.user[0].userid)) {
 		isdjing = false;
+	} else if(!isBot(currentsong.djid)) { // Don't remove the bot in th middle of a song
+		checkDjs();
 	}
 
     
@@ -452,8 +456,13 @@ exports.addDjEventHandler = function(data) {
     } else {
         djs.push({id: data.user[0].userid, remaining: Infinity});
     }
-    
 
+	// Check if the bot was added
+	if(isBot(data.user[0].userid)) {
+		isdjing = true;
+	} else if(currentsong.djid != config.botinfo.userid) { // Don't remove the bot in th middle of a song
+		checkDjs();
+	}
     
     if (config.enforcement.waitlist) {
         checkWaitlist(data.user[0].userid, data.user[0].name);
