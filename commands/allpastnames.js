@@ -1,3 +1,5 @@
+// Will not work without schema change
+
 exports.name = 'allpastnames';
 exports.hidden = false;
 exports.enabled = true;
@@ -14,6 +16,7 @@ exports.handler = function(data) {
             + ' WHERE username LIKE ? limit 1)) ORDER BY RAND()',
             [data.text.substring(13)],
             function select(error, results, fields) {
+				console.log(error);
                 var response = '';
                 response = 'That user has gone by ' + results.length + ' names: ';
                 for (i in results) {

@@ -19,11 +19,13 @@ global.package = require('./package.json');
 global.fs = require('fs');
 global.url = require('url'); 
 
+global.sqlite3;
+global.memdb;
+global.db;
+
 global.Bot;
 global.bot;
 global.config;
-global.mysql;
-global.client;
 global.request;
 global.parser;
 global.singalong;
@@ -153,29 +155,16 @@ function initializeModules () {
         }
     }
 
-    //Creates mysql db object
+    //Creates sqlite db object
     if (config.database.usedb) {
         try {
-            mysql = require('mysql');
+			sqlite3 = require('sqlite3').verbose();
+            db = new sqlite3.Database("db/sparkle.db");
+			memdb = new sqlite3.Database(":memory:");
         } catch(e) {
             console.log(e);
-            console.log('It is likely that you do not have the mysql node module installed.'
-                + '\nUse the command \'npm install mysql\' to install.');
-            console.log('Starting bot without database functionality.');
-            config.database.usedb = false;
-        }
-
-        //Connects to mysql server
-        try {
-            var dbhost = 'localhost';
-            if (config.database.login.host != null && config.database.login.host != '') {
-                dbhost = config.database.login.host;
-            }
-            client = mysql.createClient({user: config.database.login.user, password: config.database.login.password, database: config.database.dbname, host: dbhost});
-        } catch(e) {
-            console.log(e);
-            console.log('Make sure that a mysql server instance is running and that the '
-                + 'username and password information in config.js are correct.');
+            console.log('It is likely that you do not have the sqlite3 node module installed.'
+                + '\nUse the command \'npm install sqlite3\' to install.');
             console.log('Starting bot without database functionality.');
             config.database.usedb = false;
         }
@@ -233,61 +222,39 @@ function initializeModules () {
 
 //Sets up the database
 global.setUpDatabase = function() {
-    //song table
-    client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.song
-        + '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+
+	//song table
+	db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.song
+        + ' (id INTEGER PRIMARY KEY AUTOINCREMENT,'
         + ' artist VARCHAR(255),'
         + ' song VARCHAR(255),'
         + ' djid VARCHAR(255),'
-        + ' up INT(3),' + ' down INT(3),'
-        + ' listeners INT(3),'
+        + ' up INTEGER,' 
+		+ ' down INTEGER,'
+        + ' listeners INTEGER,'
         + ' started DATETIME,'
-        + ' snags INT(3),'
-        + ' bonus INT(3))',
-            
-        function (error) {
-            //Handle an error if it's not a table already exists error
-            if(error && error.number != 1050) {
-                throw (error);
-            }
-    });
+        + ' snags INTEGER,'
+        + ' bonus INTEGER)');
 
     //chat table
-    client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.chat
-        + '(id INT(11) AUTO_INCREMENT PRIMARY KEY,'
+    db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.chat
+        + ' (id INTEGER PRIMARY KEY AUTOINCREMENT,'
         + ' userid VARCHAR(255),'
         + ' chat VARCHAR(255),'
-        + ' time DATETIME)',
-        function (error) {
-            //Handle an error if it's not a table already exists error
-            if(error && error.number != 1050) {
-                throw (error);
-            }
-    });
+        + ' time DATETIME)');
         
     //user table
-    client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.user
-        + '(userid VARCHAR(255), '
+    db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.user
+        + ' (userid VARCHAR(255) PRIMARY KEY, '
         + 'username VARCHAR(255), '
-        + 'lastseen DATETIME, '
-        + 'PRIMARY KEY (userid, username))',
-        function (error) {
-            //Handle an error if it's not a table already exists error
-            if(error && error.number != 1050) {
-                throw (error);
-            }
-    });
+        + 'lastseen DATETIME)');
     
-    client.query('CREATE TABLE ' + config.database.dbname + '.' + config.database.tablenames.banned
-        + '(id INT(11) AUTO_INCREMENT PRIMARY KEY, '
+	//banned table
+    db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.banned
+        + ' (id INTEGER PRIMARY KEY AUTOINCREMENT, '
         + 'userid VARCHAR(255), '
         + 'banned_by VARCHAR(255), '
-        + 'timestamp DATETIME)',
-        function (error) {
-            if (error && error.number != 1050) {
-                throw error;
-            }
-    });
+        + 'timestamp DATETIME)');
 }
 
 global.populateSongData = function(data) {
@@ -364,10 +331,10 @@ global.reptarCall = function (source) {
 //Adds the song data to the songdata table.
 //This runs on the endsong event.
 global.addToDb = function (data) {
-    client.query(
-        'INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.song +' '
-        + 'SET artist = ?,song = ?, djid = ?, up = ?, down = ?,'
-        + 'listeners = ?, started = NOW(), snags = ?, bonus = ?',
+    db.run(
+        'INSERT INTO ' + config.database.tablenames.song +' '
+        + '(artist, song, djid, up, down, listeners, started, snags, bonus) '
+		+ 'VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)',
         [currentsong.artist, 
         currentsong.song,  
         currentsong.djid, 
@@ -388,8 +355,8 @@ global.welcomeUser = function (name, id) {
             bot.speak(':cat: <3 ' + name);
         }
         else if (config.database.usedb) {
-            client.query('SELECT greeting FROM ' + config.database.dbname + '.'
-                + config.database.tablenames.holiday + ' WHERE date LIKE CURDATE()',
+            db.run('SELECT greeting FROM ' + config.database.dbname + '.'
+                + config.database.tablenames.holiday + ' WHERE date LIKE date()',
                 function cbfunc(error, results, fields) {
                     if (results != null && results[0] != null) {
                         bot.speak(results[0]['greeting'] + ', ' + name + '!');

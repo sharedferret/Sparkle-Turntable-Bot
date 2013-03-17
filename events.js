@@ -48,9 +48,9 @@ exports.roomChangedEventHandler = function(data) {
     
     if (config.database.usedb) {
         for (i in users) {
-            client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+            db.run('REPLACE INTO ' + config.database.tablenames.user
             + ' (userid, username, lastseen)'
-                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+                + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
                 [users[i].userid, users[i].name]);
         }
     }
@@ -119,18 +119,20 @@ exports.registeredEventHandler = function (data) {
     //Wait for user to join chatserver before welcoming
     if(config.responses.welcomeusers) {
         setTimeout(function () {
+			console.log('welcoming user');
             welcomeUser(user.name, user.userid);
         }, 1000);
     }
     
     if (config.responses.welcomepm) {
         if (config.database.usedb && !config.responses.alwayspm) {
-            client.query('SELECT lastseen, NOW() AS now FROM ' + config.database.dbname + '.' + config.database.tablenames.user
+            db.all('SELECT lastseen, CURRENT_TIMESTAMP AS now FROM ' + config.database.tablenames.user
                 + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
-                function cb(error, results, fields) {
-                    if (results != null && results[0] != null) {
-                        var time = results[0]['lastseen'];
-                        var curtime = results[0]['now'];
+                function cb(error, rows) {
+					console.log('welcome', error);
+                    if (rows != null && rows[0] != null) {
+                        var time = rows[0]['lastseen'];
+                        var curtime = rows[0]['now'];
                         //Send a welcome PM if user hasn't joined in 36+ hours
                         if ((new Date().getTime() - time.getTime()) > 129600000) {
                             output({text: config.responses.pmgreet,
@@ -149,15 +151,15 @@ exports.registeredEventHandler = function (data) {
     
     //Add user to user table
     if (config.database.usedb) {
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+        db.run('REPLACE INTO ' + config.database.tablenames.user
         + ' (userid, username, lastseen)'
-            + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+            + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
             [user.userid, user.name]);
     
     //See if banned
-        client.query('SELECT userid, banned_by, DATE_FORMAT(timestamp, \'%c/%e/%y\')'
-            + ' FROM ' + config.database.dbname + '.' + config.database.tablenames.banned + ' WHERE userid LIKE \'' + user.userid + '\'',
-        function cb (error, results, fields) {
+        db.all('SELECT userid, banned_by, timestamp'
+            + ' FROM ' + config.database.tablenames.banned + ' WHERE userid LIKE \'' + user.userid + '\'',
+        function cb (error, results) {
             if (results != null && results.length > 0) {
                 bot.boot(user.userid, 'You were banned from this room by ' + results[0]['banned_by']
                     + ' on ' + results[0]['timestamp']);
@@ -208,8 +210,8 @@ exports.speakEventHandler = function (data) {
         if (inputtext.length > 255) {
             inputtext = inputtext.substring(0, 255);
         }
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.chat + ' '
-            + 'SET userid = ?, chat = ?, time = NOW()',
+        db.run('INSERT INTO ' + config.database.tablenames.chat + ' '
+            + 'SET userid = ?, chat = ?, time = CURRENT_TIMESTAMP',
             [data.userid, inputtext]);
     }
 
@@ -466,9 +468,9 @@ exports.pmEventHandler = function(data) {
             handleCommand(usersList[data.senderid].name, data.senderid, data.text.toLowerCase(), 'pm');
         //Case 2: In DB. We have their name.
         } else if (config.database.usedb) {
-            client.query('SELECT username FROM ' + config.database.dbname + '.' + config.database.tablenames.users + ' WHERE userid LIKE \'' + data.senderid
+            db.all('SELECT username FROM ' + config.database.tablenames.users + ' WHERE userid LIKE \'' + data.senderid
                 + '\' ORDER BY lastseen DESC LIMIT 1',
-                function cb(error, results, fields) {
+                function cb(error, results) {
                     if (results != null && results[0] != null) {
                         handleCommand(results[0]['username'], data.senderid, data.text.toLowerCase(), 'pm');
                     } else {
@@ -492,9 +494,9 @@ exports.pmEventHandler = function(data) {
 exports.updateUserEventHandler = function(data) {
     //Update user name in users table
     if (config.database.usedb && (data.name != null)) {
-        client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user
+        db.run('REPLACE INTO ' + config.database.tablenames.user
             + ' (userid, username, lastseen)'
-                + 'VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE lastseen = NOW()',
+                + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
                 [data.userid, data.name]);
         }
 }
