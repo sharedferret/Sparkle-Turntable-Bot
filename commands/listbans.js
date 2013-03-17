@@ -4,15 +4,10 @@ exports.enabled = true;
 exports.matchStart = true;
 exports.handler = function(data) {
     if (config.database.usedb) {
-        client.query('SELECT banned_by, DATE_FORMAT(timestamp, '
-            + '\'%c/%d/%y\') AS date, username FROM (SELECT * FROM '
-            + config.database.dbname + '.'
+        db.all('SELECT banned_by, timestamp as date, username FROM (SELECT * FROM '
             + config.database.tablenames.banned + ') a INNER JOIN '
-            + ' (SELECT * FROM (SELECT *'
-            + ' FROM ' + config.database.dbname + '.'
-            + config.database.tablenames.user
-            + ' ORDER BY lastseen DESC) as test GROUP BY '
-            + 'userid) b ON a.userid = b.userid',
+            + ' (SELECT * FROM ' + config.database.tablenames.user
+            + ') b ON a.userid = b.userid',
             function cb (error, results, fields) {
                 var rp = 'Banned users: ';
                 for (i in results) {

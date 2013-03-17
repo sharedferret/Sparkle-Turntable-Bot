@@ -18,6 +18,7 @@ global.package = require('./package.json');
 
 global.fs = require('fs');
 global.url = require('url'); 
+global.async = require('async');
 
 global.sqlite3;
 global.memdb;
@@ -159,7 +160,7 @@ function initializeModules () {
     if (config.database.usedb) {
         try {
 			sqlite3 = require('sqlite3').verbose();
-            db = new sqlite3.Database("db/sparkle.db");
+            db = new sqlite3.Database("db/sparkle.sqlite");
 			memdb = new sqlite3.Database(":memory:");
         } catch(e) {
             console.log(e);
@@ -248,7 +249,12 @@ global.setUpDatabase = function() {
         + ' (userid VARCHAR(255) PRIMARY KEY, '
         + 'username VARCHAR(255), '
         + 'lastseen DATETIME)');
-    
+
+	//pastuser table
+    db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.pastuser
+		+ ' (userid VARCHAR(255) PRIMARY KEY, '
+		+ 'username VARCHAR(255))');
+	
 	//banned table
     db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.banned
         + ' (id INTEGER PRIMARY KEY AUTOINCREMENT, '
@@ -355,9 +361,11 @@ global.welcomeUser = function (name, id) {
             bot.speak(':cat: <3 ' + name);
         }
         else if (config.database.usedb) {
-            db.run('SELECT greeting FROM ' + config.database.dbname + '.'
-                + config.database.tablenames.holiday + ' WHERE date LIKE date()',
+            db.all('SELECT greeting, date(CURRENT_TIMESTAMP) as date FROM '
+                + config.database.tablenames.holiday + ' WHERE date LIKE date(CURRENT_TIMESTAMP)',
                 function cbfunc(error, results, fields) {
+					console.log(error);
+					console.log(results);
                     if (results != null && results[0] != null) {
                         bot.speak(results[0]['greeting'] + ', ' + name + '!');
                     } else {

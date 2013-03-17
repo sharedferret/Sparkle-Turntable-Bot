@@ -4,3 +4,4 @@ node_modules
 setup.js
 .DS_Store
 config/
+db/sparkle.sqlite

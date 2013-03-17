@@ -10,6 +10,7 @@ exports.handler = function(data) {
         var givenname = data.text.substring(8);
         db.all('SELECT userid FROM (SELECT * FROM ' + config.database.tablenames.user
             + ' WHERE username LIKE ?) a ORDER BY lastseen DESC', [givenname], function select(error, results, fields) {
+		console.log('ban', results);
             if (results != null && results.length > 0) {
                 addToBanList(results[0]['userid'], givenname, data.name);
             }
@@ -18,7 +19,7 @@ exports.handler = function(data) {
 }
 
 function addToBanList(userid, name, bannedby) {
-    client.query('INSERT INTO ' + config.database.dbname + '.' + config.database.tablenames.user + ' (userid, banned_By, timestamp) VALUES (?, ?,  userid = ?, banned_by = ?, timestamp = NOW()',
+    db.run('INSERT INTO bannedusers (userid, banned_by, timestamp) VALUES (?, ?, CURRENT_TIMESTAMP)',
             [userid, bannedby]);
     bot.speak(name + ' (UID ' + userid + ') has been banned by ' + bannedby + '.');
     bot.boot(userid, 'You have been banned by ' + bannedby + '.');

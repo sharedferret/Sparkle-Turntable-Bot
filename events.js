@@ -119,7 +119,6 @@ exports.registeredEventHandler = function (data) {
     //Wait for user to join chatserver before welcoming
     if(config.responses.welcomeusers) {
         setTimeout(function () {
-			console.log('welcoming user');
             welcomeUser(user.name, user.userid);
         }, 1000);
     }
