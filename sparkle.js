@@ -364,8 +364,6 @@ global.welcomeUser = function (name, id) {
             db.all('SELECT greeting, date(CURRENT_TIMESTAMP) as date FROM '
                 + config.database.tablenames.holiday + ' WHERE date LIKE date(CURRENT_TIMESTAMP)',
                 function cbfunc(error, results, fields) {
-					console.log(error);
-					console.log(results);
                     if (results != null && results[0] != null) {
                         bot.speak(results[0]['greeting'] + ', ' + name + '!');
                     } else {

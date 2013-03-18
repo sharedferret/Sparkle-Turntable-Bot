@@ -49,9 +49,12 @@ exports.roomChangedEventHandler = function(data) {
     if (config.database.usedb) {
         for (i in users) {
             db.run('REPLACE INTO ' + config.database.tablenames.user
-            + ' (userid, username, lastseen)'
+            + ' (userid, username, lastseen) '
                 + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
                 [users[i].userid, users[i].name]);
+			db.run('REPLACE INTO ' + config.database.tablenames.pastuser
+				+ ' (userid, username, lastseen) VALUES (?, ?, CURRENT_TIMESTAMP)',
+				[users[i].userid, users[i].name]);
         }
     }
     
@@ -154,6 +157,9 @@ exports.registeredEventHandler = function (data) {
         + ' (userid, username, lastseen)'
             + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
             [user.userid, user.name]);
+		db.run('REPLACE INTO ' + config.database.tablenames.pastuser
+				+ ' (userid, username, lastseen) VALUES (?, ?, CURRENT_TIMESTAMP)',
+				[user.userid, user.name]);
     
     //See if banned
         db.all('SELECT userid, banned_by, timestamp'
@@ -210,7 +216,7 @@ exports.speakEventHandler = function (data) {
             inputtext = inputtext.substring(0, 255);
         }
         db.run('INSERT INTO ' + config.database.tablenames.chat + ' '
-            + 'SET userid = ?, chat = ?, time = CURRENT_TIMESTAMP',
+            + '(userid, chat, time) VALUES (?, ?, CURRENT_TIMESTAMP)',
             [data.userid, inputtext]);
     }
 
@@ -497,6 +503,9 @@ exports.updateUserEventHandler = function(data) {
             + ' (userid, username, lastseen)'
                 + 'VALUES (?, ?, CURRENT_TIMESTAMP)',
                 [data.userid, data.name]);
+		db.run('REPLACE INTO ' + config.database.tablenames.pastuser
+				+ ' (userid, username, lastseen) VALUES (?, ?, CURRENT_TIMESTAMP)',
+				[data.userid, data.name]);
         }
 }
 

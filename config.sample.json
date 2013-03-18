@@ -9,10 +9,11 @@
 	"dbname":"nodejs_mysql_treehouse", 
     "logchat":false,
 	"tablenames": 
-		{"song": "SONGLIST", 
-		"chat": "CHATLOG", 
-		"user": "USERS", 
-		"banned": "BANNEDUSERS",
+		{"song": "songlist", 
+		"chat": "chatlog", 
+		"user": "users", 
+		"pastuser": "pastnames",
+		"banned": "bannedusers",
 		"holiday": "HOLIDAY_GREETINGS"},
 	"login":{
 		"user":"#####",

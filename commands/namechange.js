@@ -4,13 +4,12 @@ exports.enabled = true;
 exports.matchStart = false;
 exports.handler = function(data) {
     if (config.database.usedb) {
-        client.query('SELECT unix_timestamp(lastseen) FROM ' + config.database.dbname + '.' + config.database.tablenames.user
-            + ' WHERE userid like ? ORDER BY lastseen desc',
+		db.all('select strftime(\'%s\', lastseen) as seen from '
+			+ config.database.tablenames.pastuser + ' where userid = ? order by seen desc limit 2',
             [data.userid],
             function select(error, results, fields) {
                 if (results != null && results[1] != null) {
-                    var lastname = new Date(results[1]['unix_timestamp(lastseen)'] * 1000);
-                    console.log(results[1]['unix_timestamp(lastseen)']);
+                    var lastname = new Date(results[1]['seen'] * 1000);
                     lastname.setDate(lastname.getDate()+7);
                     if (lastname.getTime() - new Date().getTime() > 0) {
                         var response = data.name + ', you can probably change your name a little after ' + lastname.toLocaleString();

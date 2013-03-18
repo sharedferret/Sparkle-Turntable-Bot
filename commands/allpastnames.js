@@ -7,23 +7,21 @@ exports.matchStart = true;
 exports.handler = function(data) {
     if (config.database.usedb) {
         if (data.source != 'pm') {
-            output({text: 'That is a PM-only command.', destination: data.source, userid: data.userid});
+            output({text: 'Let me PM that to you...', destination: data.source, userid: data.userid});
         }
-		else {		
-            client.query('SELECT username FROM ' + config.database.dbname + '.' + config.database.tablenames.user
-            + ' WHERE (userid like (SELECT '
-            + 'userid FROM ' + config.database.dbname + '.' + config.database.tablenames.user
-            + ' WHERE username LIKE ? limit 1)) ORDER BY RAND()',
-            [data.text.substring(13)],
-            function select(error, results, fields) {
+		db.all('select username from ' + config.database.tablenames.pastuser
+			+ ' where userid like (select userid from '
+			+ config.database.tablenames.pastuser + ' where username like ? '
+			+ 'order by lastseen desc limit 1) order by lastseen desc', 
+			[data.text.substring(13)],
+			function select(error, results, fields) {
 				console.log(error);
                 var response = '';
                 response = 'That user has gone by ' + results.length + ' names: ';
                 for (i in results) {
                     response += results[i]['username'] + ', ';
                 }
-                output({text: response.substring(0, response.length - 2), destination: data.source, userid: data.userid});
-            });
-        }
+                output({text: response.substring(0, response.length - 2), destination: 'pm', userid: data.userid});
+        });
     }
 }
