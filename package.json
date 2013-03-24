@@ -21,7 +21,7 @@
   	"ttapi": "*",
     "request": "*",
     "xml2js": ">= 0.1.13",
-    "mysql":"*"
+    "mysql":"<= 0.9.6"
   },
   "devDependencies": {},
   "optionalDependencies": {}
