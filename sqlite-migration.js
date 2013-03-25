@@ -47,9 +47,10 @@ db.run('CREATE TABLE IF NOT EXISTS users'
 
 //pastuser table
 db.run('CREATE TABLE IF NOT EXISTS pastnames'
-		+ ' (userid VARCHAR(255) PRIMARY KEY, '
+		+ ' (userid VARCHAR(255), '
 		+ 'username VARCHAR(255), '
-		+ 'lastseen DATETIME)');
+		+ 'lastseen DATETIME, '
+		+ 'PRIMARY KEY (userid, username)) ');
 	
 //banned table
 db.run('CREATE TABLE IF NOT EXISTS bannedusers'
