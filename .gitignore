@@ -5,3 +5,4 @@ setup.js
 .idea
 .DS_Store
 config/
+db/sparkle.sqlite
