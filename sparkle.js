@@ -253,7 +253,8 @@ global.setUpDatabase = function() {
 	//pastuser table
     db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.pastuser
 		+ ' (userid VARCHAR(255) PRIMARY KEY, '
-		+ 'username VARCHAR(255))');
+		+ 'username VARCHAR(255), '
+		+ 'lastseen DATETIME)');
 	
 	//banned table
     db.run('CREATE TABLE IF NOT EXISTS ' + config.database.tablenames.banned
