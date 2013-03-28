@@ -136,7 +136,8 @@ exports.registeredEventHandler = function (data) {
     //Greet user
     //Displays custom greetings for certain members
     //Wait for user to join chatserver before welcoming
-    if(config.responses.welcomeusers) {
+	//Don't welcome guests
+    if(config.responses.welcomeusers && user.registered != null) {
         setTimeout(function () {
             welcomeUser(user.name, user.userid);
         }, 1000);
