@@ -120,9 +120,10 @@ exports.registeredEventHandler = function (data) {
     //Greet user
     //Displays custom greetings for certain members
     //Wait for user to join chatserver before welcoming
-    if(config.responses.welcomeusers) {
+	//Do not welcome guests
+    if(config.responses.welcomeusers && user.registered != null) {
         setTimeout(function () {
-            welcomeUser(user.name, user.userid);
+			welcomeUser(user.name, user.userid);
         }, 1000);
     }
     
@@ -131,7 +132,6 @@ exports.registeredEventHandler = function (data) {
             db.all('SELECT lastseen, CURRENT_TIMESTAMP AS now FROM ' + config.database.tablenames.user
                 + ' WHERE userid LIKE \'' + user.userid + '\' ORDER BY lastseen desc LIMIT 1',
                 function cb(error, rows) {
-					console.log('welcome', error);
                     if (rows != null && rows[0] != null) {
                         var time = rows[0]['lastseen'];
                         var curtime = rows[0]['now'];

@@ -355,13 +355,10 @@ global.addToDb = function (data) {
 global.welcomeUser = function (name, id) {
     //Ignore ttstats bots
     if (!name.match(/^ttstats/)) {
-        if (id == '4f5628b9a3f7515810008122') {
-            bot.speak(':cat: <3 :wolf:');
-        }
-        else if (id == '4df0443f4fe7d0631905d6a8') {
+        if (id == '4df0443f4fe7d0631905d6a8') {
             bot.speak(':cat: <3 ' + name);
         }
-        else if (config.database.usedb) {
+        else {
             db.all('SELECT greeting, date(CURRENT_TIMESTAMP) as date FROM '
                 + config.database.tablenames.holiday + ' WHERE date LIKE date(CURRENT_TIMESTAMP)',
                 function cbfunc(error, results, fields) {
@@ -371,8 +368,6 @@ global.welcomeUser = function (name, id) {
                         bot.speak(config.responses.greeting + name + '!');
                     }
             });
-        } else {
-            bot.speak(config.responses.greeting + name + '!');
         }
     }
 }
