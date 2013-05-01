@@ -9,7 +9,8 @@ exports.handler = function(data) {
         bot.getUserId(nameforid, function(d) {
             if (d.success) {
                 var urls = global.booturls;
-                bot.boot(d.userid, urls[ parseInt(Math.random() * urls.length) ]);
+                var msg = urls && urls.length > 0? urls[ parseInt(Math.random() * urls.length) ] : "You've been booted by the bot";
+                bot.boot(d.userid, msg);
             } else {
                 output({text: "User id not found!", destination: 'pm', userid: data.userid});
             }
