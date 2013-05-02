@@ -82,4 +82,7 @@
 	},
 	"maintenance":{
 		"autorejoin":true
-	}}
+	},
+    modnotice: false,
+    webstatus: false
+}
