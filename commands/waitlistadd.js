@@ -1,7 +1,7 @@
 //If waitlist is enabled, adds a user to the waitlist
 
-exports.name = '.add';
-exports.hidden = true;
+exports.name = ['+q', 'q+', '.add', '.addme', '/add', '/q+', 'addme', '/addme'];
+exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;
 exports.handler = function(data) {

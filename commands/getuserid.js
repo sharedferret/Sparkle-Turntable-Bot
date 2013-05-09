@@ -3,7 +3,7 @@ exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = true;
 exports.handler = function(data) {
-    var nameforid = data.text.substring(10);
+    var nameforid = data.text.substring(11);
     bot.getUserId(nameforid, function(d) {
         if (d.success) {
             var response = nameforid + '\'s user id is ' + d.userid + '!';

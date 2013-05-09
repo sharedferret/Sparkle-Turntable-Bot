@@ -1,7 +1,7 @@
 exports.name = 'q';
 exports.hidden = false;
 exports.enabled = true;
-exports.matchStart = false;
+exports.matchStart = false; 
 exports.handler = function(data) {
     if (config.enforcement.waitlist) {
         var response = 'Queue: ';

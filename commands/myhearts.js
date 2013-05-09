@@ -7,7 +7,14 @@ exports.handler = function(data) {
         client.query('SELECT SUM(snags) AS SUM FROM '
             + config.database.dbname + '.' + config.database.tablenames.song + ' WHERE (djid = \''+ data.userid +'\')',
             function select(error, results, fields) {
-                var response = 'You have ' + results[0]['SUM'] + ' hearts total!';
+                var sum = results[0]['SUM'];
+                var response;
+                if (sum) {
+                    response = 'You have ' + sum + ' hearts total!';
+                } else {
+                    response = 'You have no hearts';
+                    output({text: 'Pro-tip: To get more hearts, get on the deck and play awesome music!', destination: 'pm', userid: data.userid});
+                }
                 output({text: response, destination: data.source, userid: data.userid});
         });
     }
