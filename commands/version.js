@@ -7,7 +7,7 @@ exports.handler = function(data) {
         function (error, response, body) {
             var currentversion = JSON.parse(body).version;
             var response;
-            if (package.version != currentversion) {
+            if (package.version < currentversion) {
                 setTimeout(function() {
                     output({text: 'Your version of sparklebot is out of date! Update through npm or at http://git.io/meow', destination: data.source, userid: data.userid});
                 }, 1000);

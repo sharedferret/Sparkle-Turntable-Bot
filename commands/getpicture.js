@@ -7,25 +7,13 @@ exports.handler = function(data) {
     bot.getUserId(nameforid, function(iddata) {
         if (iddata.success) {
             bot.getProfile(iddata.userid, function(d) {
-                var response;
+                var response = '';
+				console.log('profile', d);
                 
                 //Try Facebook
+				//TODO: Re-add Twitter profile picture check (requires 1.1 OAuth)
                 if (d.facebook != null && d.facebook != '') {
-                    var loc = d.facebook.indexOf('facebook.com/');
-                    if (loc >= 0) {
-                        var innerloc = d.facebook.indexOf('profile.php?id=');
-                        var profileid = d.facebook.substring(loc + 13);
-                        if (innerloc >= 0) {
-                            profileid = d.facebook.substring(innerloc + 15);
-                        }
-                        response = d.name + '\'s picture: https://graph.facebook.com/' + profileid + '/picture?type=large';
-                    }
-                }
-                
-                //Try Twitter
-                else if (d.twitter != null && d.twitter != '') {
-                    response = d.name + '\'s picture: https://api.twitter.com/1'
-                        + '/users/profile_image?screen_name=' + d.twitter + '&size=bigger';
+					response = d.name + '\'s picture: https://graph.facebook.com/' + d.facebook + '/picture?type=large';
                 } else {
                 
                     response = 'I can\'t find one.';
