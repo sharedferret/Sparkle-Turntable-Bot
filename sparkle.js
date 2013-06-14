@@ -88,13 +88,6 @@ global.moderators = new Array();
 global.bonuspoints = new Array();      //An array of DJs wanting the bot to bonus
 global.bonusvote = false;              //A flag denoting if the bot has bonus'd a song
 global.bonusvotepoints = 0;            //The number of awesomes needed for the bot to awesome
-
-global.nomodurls = ['http://i.imgur.com/8Nb4gu2.jpg',
-                    'http://i.imgur.com/LP977oP.gif',
-                    'I know - http://i.imgur.com/kgdbKsw.gif',
-                    'http://i.imgur.com/sjRv3Sv.gif',
-                    'http://i.imgur.com/xLhBEMC.gif',
-                    ];
                    
 //Current song info
 global.currentsong = {
@@ -292,7 +285,7 @@ function initializeModules() {
 				enabled:            command.enabled});
 		}
 	} catch(e) {
-		//
+		console.log('Failed to load HTTP command: ', e);
 	}
 
 }
@@ -394,8 +387,7 @@ global.admincheck = function(userid, data) {
 		}));
     if (data && !isAdmin && config.modnotice) {
         var urls = global.nomodurls;
-        global.output({text: 'Thats a mod command - ' + 
-                             urls[parseInt(Math.random()*urls.length)], 
+        global.output({text: 'Sorry, that command can only be used by a moderator.', 
                        destination: 'pm', 
                        userid: data.userid}); 
     }
@@ -522,7 +514,7 @@ global.welcomeUser = function(name, id) {
 					}
 				});
 		} else {
-			bot.speak(config.responses.greeting + name + '! Watch your (dub)step.');
+			bot.speak(config.responses.greeting + name + '!');
 		}
 	}
 }
@@ -532,6 +524,7 @@ global.welcomeUser = function(name, id) {
 global.enforceRoom = function() {
 	setTimeout(function() {
 		if(!userstepped) {
+			//TODO: song/songs
 			bot.speak('@' + usersList[usertostep].name + ', you have played ' + config.enforcement.songslimit.maxsongs +
 				' songs. Please step down to allow others to DJ.');
 			setTimeout(function() {
@@ -849,14 +842,6 @@ global.handleCommand = function(name, userid, text, source) {
 			bot.speak('Shutting down...');
 			bot.roomDeregister();
 			process.exit(33);
-		}
-	}
-
-	if(text.toLowerCase() == (config.botinfo.botname + ', come back later')) {
-		if(userid == config.admin) {
-			bot.speak('I\'ll be back in ten minutes!');
-			bot.roomDeregister();
-			process.exit(34);
 		}
 	}
 

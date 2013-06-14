@@ -10,9 +10,6 @@ This project is still maintained, but I don't have a lot of time for development
 
 Check out the [Get Started guide](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki/Get-Started) over on the project's [Wiki page](https://github.com/sharedferret/Sparkle-Turntable-Bot/wiki) for detailed installation instructions.
 
-## News
-3/16/13 - I'm currently working on updating the bot to use sqlite instead of MySQL. What this means is it will no longer be necessary to set up a database for the bot (it's entirely contained within and managed by Sparkle). This should hopefully make installation much easier. There's no ETA for when this will be done, but if you want to try it out, a (somewhat) working copy is available on the dev branch.
-
 ## Features
 
 This bot is written in Node.JS and utilizes Alain Gilbert's Turntable API.

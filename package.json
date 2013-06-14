@@ -1,7 +1,7 @@
 {
   "name": "sparklebot",
   "description": "A customizable Turntable.fm room bot.",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "keywords": ["turntable.fm", "turntable", "stickybits"],
   "repository": {
     "type": "git",
