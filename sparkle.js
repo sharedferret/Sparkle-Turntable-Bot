@@ -16,37 +16,6 @@
 var args = process.argv;
 var http = require('http');
 
-if (config.webstatus) {
-    var ipaddr  = process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1";
-    var port    = process.env.OPENSHIFT_NODEJS_PORT || 8080;
-
-    http.createServer(function (req, res) {
-        var addr = "unknown";
-        var out = "";
-        if (req.headers.hasOwnProperty('x-forwarded-for')) {
-            addr = req.headers['x-forwarded-for'];
-        } else if (req.headers.hasOwnProperty('remote-addr')){
-            addr = req.headers['remote-addr'];
-        }
-
-        if (req.headers.hasOwnProperty('accept')) {
-            if (req.headers['accept'].toLowerCase() == "application/json") {
-                  res.writeHead(200, {'Content-Type': 'application/json'});
-                  res.end(JSON.stringify({'ip': addr}, null, 4) + "\n");			
-                  return ;
-            }
-        }
-
-      res.writeHead(200, {'Content-Type': 'text/html'});
-      res.write("Welcome to this bot. Can't tell you much here though!");
-      res.write('Visit us at <a href="http://turntable.fm/">  TT. </a><br>');
-      res.write("Your IP address seems to be " + addr + "<br>");
-      client.query('SELECT count(*) as total FROM '+ config.database.dbname + '.' + config.database.tablenames.song,
-                function select(error, results, fields) {
-                    res.end(results[0]['total'] + " songs have been played here");
-                });
-    }).listen(port, ipaddr);
-}
 global.package = require('./package.json');
 
 global.fs = require('fs');
@@ -144,6 +113,38 @@ process.on('message', function(data) {
 		bot.speak(data.deliverCommand);
 	}
 });
+
+if (config.webstatus) {
+    var ipaddr  = process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1";
+    var port    = process.env.OPENSHIFT_NODEJS_PORT || 8080;
+
+    http.createServer(function (req, res) {
+        var addr = "unknown";
+        var out = "";
+        if (req.headers.hasOwnProperty('x-forwarded-for')) {
+            addr = req.headers['x-forwarded-for'];
+        } else if (req.headers.hasOwnProperty('remote-addr')){
+            addr = req.headers['remote-addr'];
+        }
+
+        if (req.headers.hasOwnProperty('accept')) {
+            if (req.headers['accept'].toLowerCase() == "application/json") {
+                  res.writeHead(200, {'Content-Type': 'application/json'});
+                  res.end(JSON.stringify({'ip': addr}, null, 4) + "\n");			
+                  return ;
+            }
+        }
+
+      res.writeHead(200, {'Content-Type': 'text/html'});
+      res.write("Welcome to this bot. Can't tell you much here though!");
+      res.write('Visit us at <a href="http://turntable.fm/">  TT. </a><br>');
+      res.write("Your IP address seems to be " + addr + "<br>");
+      client.query('SELECT count(*) as total FROM '+ config.database.dbname + '.' + config.database.tablenames.song,
+                function select(error, results, fields) {
+                    res.end(results[0]['total'] + " songs have been played here");
+                });
+    }).listen(port, ipaddr);
+}
 
 // Functions
 
@@ -445,7 +446,7 @@ global.checkAFK = function() {
 
 global.checkDjs = function() {
 	var extra = isdjing ? -1 : 0;
-	if(djs.length + extra >= config.djing.minDjs && djs.length + extra <= config.djing.maxDjs) {
+	if(djs.length + extra >= config.djing.minDjs && djs.length + extra <= config.djing.maxDjs && config.djing.botdj) {
 		if(isdjing) {
 			return;
 		}
