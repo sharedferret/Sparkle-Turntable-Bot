@@ -229,6 +229,7 @@ function initializeModules() {
 		//Connects to mysql server
 		try {
 			client = createMySqlConnection();
+			handleDisconnect(client);
 		} catch(e) {
 			console.log(e);
 			console.log('Make sure that a mysql server instance is running and that the '
@@ -236,7 +237,7 @@ function initializeModules() {
 			console.log('Starting bot without database functionality.');
 			config.database.usedb = false;
 		}
-		handleDisconnect(client);
+		
 	}
 
 	//Initializes request module
@@ -426,14 +427,14 @@ global.checkAFK = function() {
 
 				// Warn the DJ and set timer to remove them
 				djs[i].warned = true;
-				bot.speak('@' + djs[i].user.name + ', you have been idle for ' + config.enforcement.idle.idlewarntime +
-					' minutes. Please Awesome or speak in console to remain dj.');
+				bot.speak('Hey @' + djs[i].user.name + ', are you still there? You\'ve been idle for ' + config.enforcement.idle.idlewarntime +
+					' minutes. Please awesome or chat to continue spinning.');
 				(function(id) {
 					setTimeout(function() {
 						for(j in djs) {
 							if(id == djs[j].id && djs[j].warned) {
-								bot.speak('@' + djs[j].user.name + ', you have been idle for ' +
-									config.enforcement.idle.idleremovaltime + ' minutes. You are no longer DJ.');
+								bot.speak('Sorry @' + djs[j].user.name + ', you\'ve been idle for ' +
+									config.enforcement.idle.idleremovaltime + ' minutes.');
 								bot.remDj(djs[j].id);
 							}
 						}
