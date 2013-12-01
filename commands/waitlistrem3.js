@@ -1,6 +1,6 @@
 //If waitlist is enabled, removes a user from the waitlist
 
-exports.name = '-q';
+exports.name = ['q-', '-q'];
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;

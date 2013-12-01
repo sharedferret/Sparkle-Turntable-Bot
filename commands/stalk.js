@@ -14,9 +14,14 @@ exports.handler = function(data) {
         bot.getUserId(u, function(d) {
             if (d.success) {
                 bot.stalk(d.userid, true, function(data) {
-                   var txt = "@" + u + " is in '" + data['room']['name'] + "'";
+                   
+                   var txt;
+                   if (data['room']) {
+                       txt = "@" + u + " is in '" + data['room']['name'] + "'";
+                   } else {
+                       txt = "@" + u + " can't be found in any rooms but might be in a secret room";
+                   }
                    say(txt);
-                   console.log("Stalking " + d.userid + " " + txt);
                 });
             } else {
                 output({text: "User id not found!", destination: 'pm', userid: data.userid});

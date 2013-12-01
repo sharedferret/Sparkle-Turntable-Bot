@@ -5,8 +5,19 @@ exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;
 exports.handler = function(data) {
-    var response = 'Commands: ' + commands.filter(function(command) {
+    
+    var comms = commands.filter(function(command) {
         return command.enabled && !command.hidden;
-    }).map(function(command){return command.name;}).sort().join(', ');
-    output({text: response, destination: data.source, userid: data.userid});
+    }).map(function(command){
+        if (command.name instanceof Array) {
+            return command.name;
+        } else {
+            return [command.name];
+        }
+    });
+    
+    
+    var merged = [];
+    merged = merged.concat.apply(merged, comms).sort();
+    output({text: "Commands are: " + merged.join(', '), destination: 'pm', userid: data.userid});
 }

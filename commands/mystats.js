@@ -2,6 +2,7 @@ exports.name = 'mystats';
 exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = false;
+
 exports.handler = function(data) {
     if (config.database.usedb) {
         //These two statements gets the user's rank (by awesomes) and sets it to @rank

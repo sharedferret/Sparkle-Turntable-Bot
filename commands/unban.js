@@ -3,7 +3,7 @@ exports.hidden = false;
 exports.enabled = true;
 exports.matchStart = true;
 exports.handler = function(data) {
-    if (config.database.usedb && admincheck(data.userid)) {
+    if (config.database.usedb && admincheck(data.userid, data)) {
         //Get name and userid
         var givenname = data.text.substring(10);
         client.query('SELECT userid FROM ' + config.database.dbname + '.' + config.database.tablenames.user

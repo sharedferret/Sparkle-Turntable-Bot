@@ -2,7 +2,7 @@
 
 exports.name = 'antiquing?';
 exports.hidden = true;
-exports.enabled = true;
+exports.enabled = false;
 exports.matchStart = false;
 exports.handler = function(data) {
     var response = ('\"Antiquing\" is the act of shopping, identifying, negotiating, or '
