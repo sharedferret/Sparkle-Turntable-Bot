@@ -83,6 +83,6 @@
 	"maintenance":{
 		"autorejoin":true
 	},
-    modnotice: false,
-    webstatus: false
+    "modnotice": false,
+    "webstatus": false
 }
